@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Secrets
+.env
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Tool/session artifacts
+.claude/
+.playwright-mcp/
+
+# Screenshots from testing
+*.png
+*.jpeg
+*.jpg
