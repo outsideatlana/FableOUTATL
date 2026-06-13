@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OutsideAtl — Admin</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0a'/%3E%3Ctext x='16' y='23' font-family='sans-serif' font-weight='900' font-size='18' fill='%23dc2626' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body class="admin-body">
+
+  <!-- ============ CHECKING SESSION ============ -->
+  <div class="admin-checking" id="checkingView">
+    <p class="mono-label is-muted">[ Checking session… ]</p>
+  </div>
+
+  <!-- ============ LOGIN VIEW ============ -->
+  <div class="auth-view" id="loginView" hidden>
+    <div class="hero-glow auth-glow" aria-hidden="true"></div>
+    <div class="hero-radial auth-radial" aria-hidden="true"></div>
+    <div class="auth-card">
+      <a class="auth-back" href="/">&larr; Back</a>
+      <h1 class="auth-title">Outside<span class="text-hot">Atl</span></h1>
+      <p class="mono-label">[ Admin Portal ]</p>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label class="field-label" for="loginUsername">Username</label>
+          <input class="input auth-input" type="text" id="loginUsername" name="username" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label class="field-label" for="loginPassword">Password</label>
+          <input class="input auth-input" type="password" id="loginPassword" name="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn-accent auth-submit" type="submit" id="loginSubmit">Sign In</button>
+        <p class="form-status" id="loginStatus" role="alert"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD VIEW ============ -->
+  <div class="dash-view" id="dashView" hidden>
+    <header class="dash-header">
+      <div class="dash-header-inner">
+        <div class="dash-brand-group">
+          <a class="brand" href="/">Outside<span class="text-hot">Atl</span></a>
+          <span class="dash-badge">[ Admin ]</span>
+        </div>
+        <button class="dash-signout" id="logoutBtn" type="button">[ Sign out ]</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div class="dash-grid">
+
+        <!-- Event form (left, sticky) -->
+        <section class="dash-form-panel">
+          <p class="mono-label" id="formModeLabel">[ New Event ]</p>
+          <h2 class="dash-form-title" id="formModeTitle">Create Event</h2>
+          <form id="eventForm" novalidate>
+            <input type="hidden" id="evId" value="" />
+            <div class="field">
+              <label class="field-label" for="evName">Title</label>
+              <input class="input" type="text" id="evName" maxlength="120" />
+              <p class="field-error" id="evNameError"></p>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label class="field-label" for="evDate">Date</label>
+                <input class="input" type="date" id="evDate" />
+                <p class="field-error" id="evDateError"></p>
+              </div>
+              <div class="field">
+                <label class="field-label" for="evTime">Time</label>
+                <input class="input" type="time" id="evTime" />
+                <p class="field-error" id="evTimeError"></p>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="evLocation">Venue / Location</label>
+              <input class="input" type="text" id="evLocation" maxlength="200" />
+              <p class="field-error" id="evLocationError"></p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="evType">Concept Type</label>
+              <select class="select" id="evType">
+                <option value="Party">Party</option>
+                <option value="Festival">Festival</option>
+                <option value="Concert">Concert</option>
+                <option value="Rave">Rave</option>
+                <option value="Pop-Up">Pop-Up</option>
+                <option value="Social">Social</option>
+                <option value="Other">Other</option>
+              </select>
+              <p class="field-error" id="evTypeError"></p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="evTicket">Ticket Link (optional)</label>
+              <input class="input" type="url" id="evTicket" placeholder="https://" />
+              <p class="field-error" id="evTicketError"></p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="evDesc">Description (optional)</label>
+              <textarea class="textarea" id="evDesc" rows="4" maxlength="1000"></textarea>
+              <p class="field-error" id="evDescError"></p>
+            </div>
+            <label class="check-label">
+              <input type="checkbox" id="evRsvp" checked />
+              <span>RSVP enabled</span>
+            </label>
+            <div class="dash-form-actions">
+              <button class="btn-accent" type="submit" id="evSubmit">Create Event</button>
+              <button class="btn-outline" type="button" id="evCancel" hidden>Cancel</button>
+            </div>
+            <p class="form-status" id="evStatus" role="status"></p>
+          </form>
+        </section>
+
+        <!-- Event list (right) -->
+        <section class="dash-list-panel">
+          <p class="mono-label is-muted">[ Events ]</p>
+          <div class="dash-list-status" id="listStatus" role="status"></div>
+          <div class="dash-list" id="eventList"></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ TOASTS ============ -->
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

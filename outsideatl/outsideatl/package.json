@@ -1,0 +1,20 @@
+{
+  "name": "outsideatl",
+  "version": "1.0.0",
+  "description": "OutsideAtl — live music & social events platform. Landing page, public forms, and admin event dashboard backed by Express + SQLite.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "hash-password": "node scripts/hash-password.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0"
+  }
+}
