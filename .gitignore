@@ -17,3 +17,8 @@ node_modules/
 *.png
 *.jpeg
 *.jpg
+
+# Embedded git repos (separate projects)
+FableOUTATLWeb/
+FableOUTATLweb3/
+outsideatlFableWeb/
