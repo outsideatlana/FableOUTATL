@@ -13,6 +13,7 @@
 
 const express = require('express');
 const { db } = require('../database');
+const airtable = require('../services/airtableService');
 const {
   clean,
   isPresent,
@@ -47,6 +48,11 @@ router.post('/rsvps', (req, res) => {
       .prepare('INSERT INTO rsvps (name, email, phone, event_name) VALUES (?, ?, ?, ?)')
       .run(data.name, data.email, data.phone, data.event_name);
 
+    // OPTIONAL Airtable mirror (after the DB save; never blocks the user).
+    airtable.syncRecord('rsvps', {
+      Name: data.name, Email: data.email, Phone: data.phone, Event: data.event_name,
+    });
+
     return res.status(201).json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (err) {
     console.error('[forms] RSVP error:', err);
@@ -73,6 +79,8 @@ router.post('/signups', (req, res) => {
     const result = db
       .prepare('INSERT INTO signups (email, phone) VALUES (?, ?)')
       .run(data.email, data.phone);
+
+    airtable.syncRecord('signups', { Email: data.email, Phone: data.phone });
 
     return res.status(201).json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (err) {
@@ -110,6 +118,11 @@ router.post('/applications', (req, res) => {
         'INSERT INTO applications (application_type, name, email, role_interest, message) VALUES (?, ?, ?, ?, ?)'
       )
       .run(data.application_type, data.name, data.email, data.role_interest, data.message);
+
+    airtable.syncRecord('applications', {
+      Type: data.application_type, Name: data.name, Email: data.email,
+      'Role Interest': data.role_interest, Message: data.message,
+    });
 
     return res.status(201).json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (err) {

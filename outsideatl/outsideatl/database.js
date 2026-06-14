@@ -40,9 +40,22 @@ function initDatabase() {
       location      TEXT    NOT NULL DEFAULT '',
       description   TEXT    NOT NULL DEFAULT '',
       ticket_link   TEXT    NOT NULL DEFAULT '',
+      image_url     TEXT    NOT NULL DEFAULT '',
       rsvp_enabled  INTEGER NOT NULL DEFAULT 1,
       created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    /* Past recap photos — uploaded by the admin, shown in the public
+       "Past Recaps" gallery. Independent of the events table so recaps
+       can be curated without creating a fake past event. */
+    CREATE TABLE IF NOT EXISTS recap_photos (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_url   TEXT NOT NULL,
+      title       TEXT NOT NULL DEFAULT '',
+      caption     TEXT NOT NULL DEFAULT '',
+      event_label TEXT NOT NULL DEFAULT '',
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS rsvps (
@@ -73,7 +86,21 @@ function initDatabase() {
   `);
 
   migrateApplicationTypes();
+  migrateEventImageColumn();
   seedDefaultEvents();
+}
+
+/**
+ * Databases created before event image uploads existed have no
+ * `image_url` column. SQLite supports ADD COLUMN in place, so add it
+ * once if it's missing (preserving all existing event rows).
+ */
+function migrateEventImageColumn() {
+  const columns = db.prepare('PRAGMA table_info(events)').all();
+  const hasImageUrl = columns.some((c) => c.name === 'image_url');
+  if (hasImageUrl) return;
+  db.exec("ALTER TABLE events ADD COLUMN image_url TEXT NOT NULL DEFAULT ''");
+  console.log('[db] Added events.image_url column');
 }
 
 /**

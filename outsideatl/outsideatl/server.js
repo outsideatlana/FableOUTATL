@@ -24,8 +24,10 @@ const express = require('express');
 const session = require('express-session');
 
 const { initDatabase } = require('./database');
+const { UPLOADS_ROOT } = require('./services/storageService');
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
+const recapRoutes = require('./routes/recaps');
 const formRoutes = require('./routes/forms');
 
 const app = express();
@@ -77,9 +79,15 @@ app.use(
 // Static frontend (landing page, admin page, CSS, JS).
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Locally/disk-stored uploads are served from /uploads. (When
+// STORAGE_PROVIDER=supabase, images are served by Supabase instead and
+// this route simply goes unused.)
+app.use('/uploads', express.static(UPLOADS_ROOT));
+
 // --- API routes ------------------------------------------------
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/recaps', recapRoutes);
 app.use('/api', formRoutes); // /api/rsvps, /api/signups, /api/applications
 
 // Friendly route for the admin page.

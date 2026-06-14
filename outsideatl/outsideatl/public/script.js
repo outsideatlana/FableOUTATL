@@ -120,6 +120,7 @@
     'STAY OUTSIDE',
     'ATLANTA AFTER-HOURS',
     'JOIN THE LIST FOR FIRST ACCESS',
+    'FOLLOW US AT @outsid3.atl'
   ];
 
   function renderTicker(upcoming) {
@@ -142,7 +143,8 @@
     const card = document.createElement('article');
     card.className = 'event-card';
 
-    // Poster: 4/5 placeholder with badge, big red date, venue
+    // Poster: real image when uploaded, otherwise the gradient
+    // placeholder with the big red date + venue (the Lovable fallback).
     const poster = document.createElement('div');
     poster.className = 'event-poster';
 
@@ -150,15 +152,25 @@
     badge.className = 'event-badge';
     badge.textContent = event.concept_type || 'Event';
 
-    const posterDate = document.createElement('span');
-    posterDate.className = 'event-poster-date';
-    posterDate.textContent = shortDate(event.date);
+    if (event.image_url) {
+      poster.classList.add('has-image');
+      const img = document.createElement('img');
+      img.className = 'event-poster-img';
+      img.src = event.image_url;
+      img.alt = event.name;
+      img.loading = 'lazy';
+      poster.append(img, badge);
+    } else {
+      const posterDate = document.createElement('span');
+      posterDate.className = 'event-poster-date';
+      posterDate.textContent = shortDate(event.date);
 
-    const posterVenue = document.createElement('span');
-    posterVenue.className = 'event-poster-venue';
-    posterVenue.textContent = event.location;
+      const posterVenue = document.createElement('span');
+      posterVenue.className = 'event-poster-venue';
+      posterVenue.textContent = event.location;
 
-    poster.append(badge, posterDate, posterVenue);
+      poster.append(badge, posterDate, posterVenue);
+    }
 
     // Meta row: info + ticket arrow
     const meta = document.createElement('div');
@@ -245,31 +257,74 @@
     return empty;
   }
 
-  function renderRecaps(past) {
+  // Admin-uploaded recap photo (has a real image).
+  function buildRecapPhotoTile(recap) {
+    const tile = document.createElement('div');
+    tile.className = 'recap-tile has-photo';
+
+    const img = document.createElement('img');
+    img.className = 'recap-photo';
+    img.src = recap.image_url;
+    img.alt = recap.title || 'Recap photo';
+    img.loading = 'lazy';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'recap-overlay';
+
+    const dateText = recap.event_label || shortDate((recap.created_at || '').slice(0, 10));
+    if (dateText) {
+      const date = document.createElement('p');
+      date.className = 'recap-date';
+      date.textContent = dateText;
+      overlay.appendChild(date);
+    }
+    if (recap.title) {
+      const title = document.createElement('p');
+      title.className = 'recap-title';
+      title.textContent = recap.title;
+      overlay.appendChild(title);
+    }
+    if (recap.caption) {
+      const cap = document.createElement('p');
+      cap.className = 'recap-caption';
+      cap.textContent = recap.caption;
+      overlay.appendChild(cap);
+    }
+
+    tile.append(img, overlay);
+    return tile;
+  }
+
+  // Fallback tile derived from a past event (the original Lovable look).
+  function buildPastEventTile(event) {
+    const tile = document.createElement('div');
+    tile.className = 'recap-tile';
+    const name = document.createElement('span');
+    name.className = 'recap-name';
+    name.textContent = event.concept_type || 'Recap';
+    const overlay = document.createElement('div');
+    overlay.className = 'recap-overlay';
+    const date = document.createElement('p');
+    date.className = 'recap-date';
+    date.textContent = shortDate(event.date);
+    const title = document.createElement('p');
+    title.className = 'recap-title';
+    title.textContent = event.name;
+    overlay.append(date, title);
+    tile.append(name, overlay);
+    return tile;
+  }
+
+  // Show uploaded recap photos first, then past events as fallback tiles.
+  function renderRecaps(recapPhotos, pastEvents) {
     const grid = $('recapsGrid');
     grid.textContent = '';
-    if (past.length === 0) {
+    if (recapPhotos.length === 0 && pastEvents.length === 0) {
       grid.appendChild(buildEmptyState('The archive starts soon.', 'Recaps land here after each drop.'));
       return;
     }
-    for (const event of past) {
-      const tile = document.createElement('div');
-      tile.className = 'recap-tile';
-      const name = document.createElement('span');
-      name.className = 'recap-name';
-      name.textContent = event.concept_type || 'Recap';
-      const overlay = document.createElement('div');
-      overlay.className = 'recap-overlay';
-      const date = document.createElement('p');
-      date.className = 'recap-date';
-      date.textContent = shortDate(event.date);
-      const title = document.createElement('p');
-      title.className = 'recap-title';
-      title.textContent = event.name;
-      overlay.append(date, title);
-      tile.append(name, overlay);
-      grid.appendChild(tile);
-    }
+    for (const recap of recapPhotos) grid.appendChild(buildRecapPhotoTile(recap));
+    for (const event of pastEvents) grid.appendChild(buildPastEventTile(event));
   }
 
   function renderRsvpSelect(upcoming) {
@@ -284,22 +339,33 @@
     }
   }
 
+  // Recap photos live in their own endpoint; load them alongside events.
+  // A recap fetch failure must not break the events UI, so it's isolated.
+  async function loadRecapPhotos() {
+    try {
+      const data = await api('/api/recaps');
+      return (data && data.recaps) || [];
+    } catch {
+      return [];
+    }
+  }
+
   async function loadEvents() {
     const status = $('eventsStatus');
     status.textContent = 'Loading events…';
     try {
-      const data = await api('/api/events');
+      const [data, recapPhotos] = await Promise.all([api('/api/events'), loadRecapPhotos()]);
       const events = Array.isArray(data) ? data : (data.events || []);
       const upcoming = events.filter((e) => !isPast(e.date));
       const past = events.filter((e) => isPast(e.date));
       renderTicker(upcoming);
       renderEvents(upcoming);
-      renderRecaps(past);
+      renderRecaps(recapPhotos, past);
       renderRsvpSelect(upcoming);
     } catch (err) {
       status.textContent = 'Could not load events. Refresh to try again.';
       renderTicker([]);
-      renderRecaps([]);
+      renderRecaps([], []);
     }
   }
 

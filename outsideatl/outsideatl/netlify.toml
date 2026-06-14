@@ -1,0 +1,41 @@
+# netlify.toml — OutsideAtl
+# ---------------------------------------------------------------
+# IMPORTANT: This Express + SQLite app is NOT a drop-in Netlify app.
+# Netlify Functions run on an EPHEMERAL filesystem and cold-start per
+# request, so neither the SQLite file nor in-memory sessions survive
+# there. See README "Deploying on Netlify" for the full picture.
+#
+# Recommended deployment (keeps this app intact):
+#   1. Host the Express backend on a persistent host (Railway / Render /
+#      Fly.io / a VPS), with STORAGE_PROVIDER=supabase so images persist.
+#   2. (Optional) Serve the static frontend on Netlify and point its API
+#      calls at the backend's URL.
+#
+# If you instead serve the whole app from the backend host, you don't
+# need Netlify at all — this file is here for the static-frontend option.
+#
+# When using Netlify for the frontend, set this repo's "Base directory"
+# to  outsideatl/outsideatl  in Netlify site settings.
+# ---------------------------------------------------------------
+
+[build]
+  # No build step — the frontend is plain static files.
+  publish = "public"
+  command = "echo 'No build step — static frontend in public/'"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA-style fallback so deep links resolve to the landing page.
+# (Remove or adjust if you wire up a separate backend host for /api/*.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Configure secrets in: Netlify → Site settings → Environment variables.
+# Required there (NEVER commit real values):
+#   SESSION_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD_HASH,
+#   STORAGE_PROVIDER=supabase,
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_STORAGE_BUCKET,
+#   ENABLE_AIRTABLE_SYNC, AIRTABLE_API_KEY, AIRTABLE_BASE_ID

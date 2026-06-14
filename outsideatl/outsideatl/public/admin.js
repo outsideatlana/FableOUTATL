@@ -37,10 +37,14 @@
    * Fetch helper
    * ============================================================ */
   async function api(path, options = {}) {
+    // FormData uploads must NOT carry a manual Content-Type — the browser
+    // sets multipart/form-data with the correct boundary itself.
+    const isForm = options.body instanceof FormData;
+    const baseHeaders = isForm ? {} : { 'Content-Type': 'application/json' };
     const res = await fetch(path, {
-      headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       ...options,
+      headers: { ...baseHeaders, ...(options.headers || {}) },
     });
     let body = null;
     try { body = await res.json(); } catch { /* non-JSON response */ }
@@ -104,6 +108,7 @@
       if (me && me.authenticated) {
         showView('dash');
         loadEvents();
+        loadRecaps();
         return;
       }
       showView('login');
@@ -135,6 +140,7 @@
       showView('dash');
       toast('Welcome back.');
       loadEvents();
+      loadRecaps();
     } catch (err) {
       setStatus('loginStatus', err.status === 401 ? 'Invalid username or password.' : err.message, true);
     } finally {
@@ -165,11 +171,26 @@
     $('evCancel').hidden = !isEdit;
   }
 
+  /** Show/hide the event image preview. `src` empty = hide. */
+  function setEventImagePreview(src) {
+    const wrap = $('evImagePreview');
+    const img = $('evImagePreviewImg');
+    if (src) {
+      img.src = src;
+      wrap.hidden = false;
+    } else {
+      img.removeAttribute('src');
+      wrap.hidden = true;
+    }
+  }
+
   function resetForm() {
     editingId = null;
     $('eventForm').reset();
     $('evId').value = '';
     $('evRsvp').checked = true;
+    $('evRemoveImage').value = '';
+    setEventImagePreview('');
     clearFieldErrors();
     setStatus('evStatus', '');
     setFormMode('create');
@@ -187,6 +208,9 @@
     $('evTicket').value = event.ticket_link || '';
     $('evDesc').value = event.description || '';
     $('evRsvp').checked = Boolean(event.rsvp_enabled);
+    $('evImage').value = '';
+    $('evRemoveImage').value = '';
+    setEventImagePreview(event.image_url || ''); // show existing image if any
     clearFieldErrors();
     setStatus('evStatus', '');
     setFormMode('edit');
@@ -195,9 +219,39 @@
     document.querySelector('.dash-form-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // Live preview when an image is chosen; selecting a file cancels any
+  // pending "remove" flag.
+  $('evImage').addEventListener('change', () => {
+    const file = $('evImage').files[0];
+    $('evImageError').textContent = '';
+    if (file) {
+      $('evRemoveImage').value = '';
+      setEventImagePreview(URL.createObjectURL(file));
+    } else {
+      setEventImagePreview('');
+    }
+  });
+
+  // Remove image: clears the chosen file and, in edit mode, flags the
+  // existing image for removal on save.
+  $('evImageRemove').addEventListener('click', () => {
+    $('evImage').value = '';
+    $('evRemoveImage').value = '1';
+    setEventImagePreview('');
+  });
+
   function buildEventRow(event) {
     const row = document.createElement('div');
     row.className = 'dash-event' + (event.id === editingId ? ' is-editing' : '');
+
+    if (event.image_url) {
+      const thumb = document.createElement('img');
+      thumb.className = 'dash-event-thumb';
+      thumb.src = event.image_url;
+      thumb.alt = '';
+      thumb.loading = 'lazy';
+      row.appendChild(thumb);
+    }
 
     const info = document.createElement('div');
     info.className = 'dash-event-info';
@@ -286,6 +340,7 @@
     concept_type: 'evTypeError',
     ticket_link: 'evTicketError',
     description: 'evDescError',
+    image: 'evImageError',
   };
 
   $('eventForm').addEventListener('submit', async (e) => {
@@ -311,24 +366,26 @@
     if (!data.location) { $('evLocationError').textContent = 'Venue is required.'; hasError = true; }
     if (hasError) return;
 
+    // Build multipart body so the optional image rides along. The backend
+    // also accepts JSON, but FormData lets us attach a file when present.
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(data)) fd.append(key, value);
+    const imageFile = $('evImage').files[0];
+    if (imageFile) fd.append('image', imageFile);
+    if ($('evRemoveImage').value === '1') fd.append('remove_image', '1');
+
     const isEdit = editingId !== null;
     const btn = $('evSubmit');
     btn.disabled = true;
-    btn.textContent = 'Saving…';
+    btn.textContent = imageFile ? 'Uploading…' : 'Saving…';
     try {
       if (isEdit) {
-        const updated = await api(`/api/events/${editingId}`, {
-          method: 'PUT',
-          body: JSON.stringify(data),
-        });
+        const updated = await api(`/api/events/${editingId}`, { method: 'PUT', body: fd });
         const merged = (updated && updated.event) || { id: editingId, ...data };
         events = events.map((ev) => (ev.id === editingId ? merged : ev));
         toast('Event updated.');
       } else {
-        const created = await api('/api/events', {
-          method: 'POST',
-          body: JSON.stringify(data),
-        });
+        const created = await api('/api/events', { method: 'POST', body: fd });
         const newEvent = (created && created.event) || { id: created && created.id, ...data };
         events.push(newEvent);
         toast('Event created.');
@@ -374,6 +431,186 @@
       toast(err.message, true);
     }
   }
+
+  /* ============================================================
+   * Recap photos: state + rendering
+   * ============================================================ */
+  let recaps = [];
+
+  const RECAP_ERROR_IDS = {
+    image: 'recapImageError',
+    title: 'recapTitleError',
+    caption: 'recapCaptionError',
+    event_label: 'recapEventLabelError',
+  };
+
+  function clearRecapErrors() {
+    Object.values(RECAP_ERROR_IDS).forEach((id) => { const el = $(id); if (el) el.textContent = ''; });
+  }
+
+  function setRecapImagePreview(src) {
+    const wrap = $('recapImagePreview');
+    const img = $('recapImagePreviewImg');
+    if (src) { img.src = src; wrap.hidden = false; }
+    else { img.removeAttribute('src'); wrap.hidden = true; }
+  }
+
+  $('recapImage').addEventListener('change', () => {
+    $('recapImageError').textContent = '';
+    const file = $('recapImage').files[0];
+    setRecapImagePreview(file ? URL.createObjectURL(file) : '');
+  });
+
+  function buildRecapCard(recap) {
+    const card = document.createElement('div');
+    card.className = 'recap-admin-card';
+
+    const img = document.createElement('img');
+    img.className = 'recap-admin-img';
+    img.src = recap.image_url;
+    img.alt = recap.title || 'Recap photo';
+    img.loading = 'lazy';
+
+    const body = document.createElement('div');
+    body.className = 'recap-admin-body';
+
+    if (recap.event_label) {
+      const label = document.createElement('span');
+      label.className = 'recap-admin-label';
+      label.textContent = recap.event_label;
+      body.appendChild(label);
+    }
+
+    const title = document.createElement('h3');
+    title.className = 'recap-admin-title';
+    title.textContent = recap.title || 'Untitled';
+    body.appendChild(title);
+
+    if (recap.caption) {
+      const cap = document.createElement('p');
+      cap.className = 'recap-admin-caption';
+      cap.textContent = recap.caption;
+      body.appendChild(cap);
+    }
+
+    const date = document.createElement('span');
+    date.className = 'recap-admin-date';
+    date.textContent = shortDate((recap.created_at || '').slice(0, 10));
+    body.appendChild(date);
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'dash-btn is-destructive recap-admin-delete';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => deleteRecap(recap, delBtn));
+
+    card.append(img, body, delBtn);
+    return card;
+  }
+
+  function renderRecapList() {
+    const list = $('recapList');
+    list.textContent = '';
+    if (recaps.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      const big = document.createElement('p');
+      big.className = 'empty-title';
+      big.textContent = 'No recap photos yet.';
+      const small = document.createElement('p');
+      small.className = 'empty-sub';
+      small.textContent = 'Upload your first recap with the form.';
+      empty.append(big, small);
+      list.appendChild(empty);
+      return;
+    }
+    for (const recap of recaps) list.appendChild(buildRecapCard(recap));
+  }
+
+  async function loadRecaps() {
+    const status = $('recapListStatus');
+    status.textContent = 'Loading recap photos…';
+    try {
+      const data = await api('/api/recaps');
+      recaps = (data && data.recaps) || [];
+      status.textContent = `${recaps.length} photo${recaps.length === 1 ? '' : 's'}`;
+      renderRecapList();
+    } catch (err) {
+      status.textContent = 'Could not load recap photos. Refresh to try again.';
+      toast(err.message, true);
+    }
+  }
+
+  $('recapForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearRecapErrors();
+    setStatus('recapStatus', '');
+
+    const file = $('recapImage').files[0];
+    if (!file) {
+      $('recapImageError').textContent = 'Choose an image to upload.';
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('title', $('recapTitle').value.trim());
+    fd.append('caption', $('recapCaption').value.trim());
+    fd.append('event_label', $('recapLabel').value.trim());
+
+    const btn = $('recapSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    try {
+      const created = await api('/api/recaps', { method: 'POST', body: fd });
+      if (created && created.recap) recaps.unshift(created.recap);
+      $('recapForm').reset();
+      setRecapImagePreview('');
+      renderRecapList();
+      $('recapListStatus').textContent = `${recaps.length} photo${recaps.length === 1 ? '' : 's'}`;
+      setStatus('recapStatus', 'Recap photo added.');
+      toast('Recap photo added.');
+    } catch (err) {
+      if (err.status === 401) { showView('login'); toast('Session expired. Sign in again.', true); return; }
+      for (const [key, msg] of Object.entries(err.fields)) {
+        const el = $(RECAP_ERROR_IDS[key]);
+        if (el) el.textContent = msg;
+      }
+      setStatus('recapStatus', err.message, true);
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Add Recap Photo';
+    }
+  });
+
+  async function deleteRecap(recap, btn) {
+    if (!window.confirm('Delete this recap photo? This can’t be undone.')) return;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+      await api(`/api/recaps/${recap.id}`, { method: 'DELETE' });
+      recaps = recaps.filter((r) => r.id !== recap.id);
+      renderRecapList();
+      $('recapListStatus').textContent = `${recaps.length} photo${recaps.length === 1 ? '' : 's'}`;
+      toast('Recap photo deleted.');
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+      if (err.status === 401) { showView('login'); toast('Session expired. Sign in again.', true); return; }
+      toast(err.message, true);
+    }
+  }
+
+  /* ============================================================
+   * Section nav (Event Management / Past Recap Photos)
+   * ============================================================ */
+  const navLinks = Array.from(document.querySelectorAll('.dash-nav-link'));
+  navLinks.forEach((link) => {
+    link.addEventListener('click', () => {
+      navLinks.forEach((l) => l.classList.toggle('is-active', l === link));
+    });
+  });
 
   /* ============================================================
    * Init

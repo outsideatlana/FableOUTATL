@@ -55,6 +55,15 @@
     </header>
 
     <main class="dash-main">
+
+      <!-- Section nav -->
+      <nav class="dash-nav" aria-label="Admin sections">
+        <a class="dash-nav-link is-active" href="#eventManagement">[ Event Management ]</a>
+        <a class="dash-nav-link" href="#recapManagement">[ Past Recap Photos ]</a>
+      </nav>
+
+      <!-- ============ EVENT MANAGEMENT ============ -->
+      <section class="dash-section" id="eventManagement">
       <div class="dash-grid">
 
         <!-- Event form (left, sticky) -->
@@ -108,6 +117,17 @@
               <textarea class="textarea" id="evDesc" rows="4" maxlength="1000"></textarea>
               <p class="field-error" id="evDescError"></p>
             </div>
+            <div class="field">
+              <label class="field-label" for="evImage">Event Image (optional)</label>
+              <input class="file-input" type="file" id="evImage" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+              <p class="field-hint">JPG, PNG, or WEBP · max 5MB. Shown on the public event card.</p>
+              <p class="field-error" id="evImageError"></p>
+              <div class="image-preview" id="evImagePreview" hidden>
+                <img class="image-preview-img" id="evImagePreviewImg" alt="Event image preview" />
+                <button class="dash-btn is-destructive" type="button" id="evImageRemove">Remove image</button>
+              </div>
+              <input type="hidden" id="evRemoveImage" value="" />
+            </div>
             <label class="check-label">
               <input type="checkbox" id="evRsvp" checked />
               <span>RSVP enabled</span>
@@ -128,6 +148,58 @@
         </section>
 
       </div>
+      </section>
+
+      <!-- ============ PAST RECAP PHOTO MANAGEMENT ============ -->
+      <section class="dash-section" id="recapManagement">
+      <div class="dash-grid">
+
+        <!-- Recap upload form (left, sticky) -->
+        <section class="dash-form-panel">
+          <p class="mono-label">[ New Recap Photo ]</p>
+          <h2 class="dash-form-title">Add Recap Photo</h2>
+          <form id="recapForm" novalidate>
+            <div class="field">
+              <label class="field-label" for="recapImage">Photo</label>
+              <input class="file-input" type="file" id="recapImage" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+              <p class="field-hint">Required · JPG, PNG, or WEBP · max 5MB.</p>
+              <p class="field-error" id="recapImageError"></p>
+              <div class="image-preview" id="recapImagePreview" hidden>
+                <img class="image-preview-img" id="recapImagePreviewImg" alt="Recap photo preview" />
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="recapTitle">Title (optional)</label>
+              <input class="input" type="text" id="recapTitle" maxlength="120" />
+              <p class="field-error" id="recapTitleError"></p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="recapLabel">Event / Date Label (optional)</label>
+              <input class="input" type="text" id="recapLabel" maxlength="80" placeholder="e.g. Silent Disco · Jul 2026" />
+              <p class="field-error" id="recapEventLabelError"></p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="recapCaption">Caption (optional)</label>
+              <textarea class="textarea" id="recapCaption" rows="3" maxlength="280"></textarea>
+              <p class="field-error" id="recapCaptionError"></p>
+            </div>
+            <div class="dash-form-actions">
+              <button class="btn-accent" type="submit" id="recapSubmit">Add Recap Photo</button>
+            </div>
+            <p class="form-status" id="recapStatus" role="status"></p>
+          </form>
+        </section>
+
+        <!-- Recap list (right) -->
+        <section class="dash-list-panel">
+          <p class="mono-label is-muted">[ Recap Photos ]</p>
+          <div class="dash-list-status" id="recapListStatus" role="status"></div>
+          <div class="recap-admin-grid" id="recapList"></div>
+        </section>
+
+      </div>
+      </section>
+
     </main>
   </div>
 
