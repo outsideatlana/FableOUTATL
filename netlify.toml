@@ -1,0 +1,13 @@
+[build]
+  command = "echo 'No build step — static frontend served from outsideatl/outsideatl/public'"
+  publish = "outsideatl/outsideatl/public"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+# SPA-style fallback so deep links resolve to the landing page.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
