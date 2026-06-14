@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ink text-white font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-hot text-white;
+  }
+}
+
+@layer components {
+  /* Monospace eyebrow label used across sections, e.g. [ 01 / Calendar ] */
+  .mono-label {
+    @apply font-mono text-[0.7rem] uppercase tracking-[0.2em] text-muted;
+  }
+
+  .display-title {
+    @apply font-display uppercase leading-[0.95] tracking-tight;
+  }
+
+  /* Inputs */
+  .field-input {
+    @apply w-full border border-line bg-ink-800 px-4 py-3 text-sm text-white
+           placeholder:text-muted outline-none transition-colors
+           focus:border-electric focus:ring-1 focus:ring-electric;
+  }
+
+  .field-label {
+    @apply mb-2 block font-mono text-[0.7rem] uppercase tracking-[0.15em] text-muted;
+  }
+
+  .field-error {
+    @apply mt-1 text-xs text-hot-400;
+  }
+}
