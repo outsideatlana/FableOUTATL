@@ -62,6 +62,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       console.error('[recaps] delete:', error.message);
       return NextResponse.json({ error: 'Could not delete the recap.' }, { status: 500 });
     }
+    // Remove the blob too (prefer pathname; falls back to the full URL).
     await deleteFromBlob(existing?.image_pathname || existing?.image_url);
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (err) {

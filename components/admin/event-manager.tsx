@@ -84,6 +84,16 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     if (!file) return { url: form.hero_image_url, pathname: form.hero_image_pathname };
     const blob = await uploadImageToBlob({ file, folder: 'events' });
     return { url: blob.url, pathname: blob.pathname };
+  async function uploadHero(): Promise<{ url: string; pathname: string }> {
+    if (!file) return { url: form.hero_image_url, pathname: form.hero_image_pathname };
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'events');
+    fd.append('access', 'public');
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error ?? 'Image upload failed.');
+    return { url: body.url as string, pathname: (body.pathname as string) ?? '' };
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {

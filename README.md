@@ -9,7 +9,8 @@ dashboard for managing events, RSVPs, applications, and recap photos.
 
 - **Framework:** Next.js 15 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS (dark nightlife brand system)
-- **Database / Storage:** Supabase (Postgres + Storage, with Row Level Security)
+- **Database:** Supabase Postgres with Row Level Security
+- **File storage:** Vercel Blob (event hero images, recap photos, files)
 - **Admin auth:** env credentials verified with bcrypt → signed `httpOnly` JWT session cookie
 - **CRM mirror (optional):** Airtable, server-side only, toggled by env
 
@@ -47,7 +48,7 @@ everything else is server-only. **Never commit `.env.local`.**
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key (RLS-guarded) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server** | Privileged key — bypasses RLS. Server only. |
-| `SUPABASE_STORAGE_BUCKET` | server | Storage bucket name (default `outsideatl-media`) |
+| `BLOB_READ_WRITE_TOKEN` | **server** | Vercel Blob token (auto-added when you create a Blob store). Server only. |
 | `ADMIN_USERNAME` | server | Admin login username |
 | `ADMIN_PASSWORD_HASH` | server | **bcrypt hash** of the admin password |
 | `SESSION_SECRET` | server | Long random string signing the session JWT |
@@ -62,10 +63,11 @@ everything else is server-only. **Never commit `.env.local`.**
 npm run hash-password -- "yourStrongPassword"
 ```
 
-> ⚠️ **bcrypt hashes contain `$`.** In `.env.local`, Next.js expands `$VAR`, which corrupts the
-> hash. **Wrap it in single quotes** in `.env.local`:
-> `ADMIN_PASSWORD_HASH='$2a$10$....'`
-> In the **Vercel dashboard**, paste the raw hash (no quotes) — it isn't parsed that way.
+> ⚠️ **bcrypt hashes contain `$`.** In `.env.local`, Next.js (`@next/env`) expands `$VAR`, which
+> corrupts the hash. **Escape each `$` as `\$`** in `.env.local`:
+> `ADMIN_PASSWORD_HASH=\$2a\$10\$....` (single quotes are **not** reliable). The
+> `hash-password` script prints a ready-to-paste line. In the **Vercel dashboard**, paste the
+> **raw** hash (no escaping) — it isn't parsed that way.
 
 Generate a session secret:
 
@@ -79,17 +81,39 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 1. Create a project at [supabase.com](https://supabase.com). Copy the **Project URL** and the
    **anon** and **service_role** keys (Project Settings → API).
-2. **Run the schema:** open the SQL editor and run `supabase/migrations/0001_init.sql`. This
-   creates all tables, enables Row Level Security with the right policies, and creates the
-   `outsideatl-media` storage bucket (public read; uploads server-only).
+2. **Run the schema:** open the SQL editor and run `supabase/migrations/0001_init.sql`, then
+   `supabase/migrations/0002_blob_pathnames.sql`. These create all tables, enable Row Level
+   Security with the right policies, and add the Blob pathname columns.
 3. *(Optional)* run `supabase/seed.sql` for a few sample events.
 4. Put the URL + keys into `.env.local` (and later into Vercel).
 
-That's it — no manual table or policy clicking required; it's all in the migration.
+That's it — no manual table or policy clicking required; it's all in the migrations.
+
+> File storage is **Vercel Blob**, not Supabase Storage (see next section). The bucket created by
+> `0001_init.sql` is harmless and unused; you can ignore or drop it.
 
 **Security model:** the browser only ever uses the anon key (RLS lets the public read published
 events + recaps and insert RSVPs/applications/signups — nothing else). All admin reads/writes go
 through server routes using the service-role key, which is never sent to the client.
+
+---
+
+## Vercel Blob setup (file storage)
+
+Uploaded files (event hero images, recap photos, future application attachments) live in
+**Vercel Blob**. Public images are served straight from their blob URL; sensitive files can be
+stored privately and streamed through an admin-only route.
+
+1. In the Vercel dashboard: **Storage → Create → Blob**, name it (e.g. `outsideatl-media`), and
+   connect it to the project.
+2. Vercel adds **`BLOB_READ_WRITE_TOKEN`** to the project's env automatically. For local dev,
+   copy it from the store's **`.env.local`** tab into your `.env.local`.
+3. Uploads are admin-only (`/api/upload`, `/api/recaps`) and validated (type + 10MB limit);
+   the returned `url`/`pathname` are saved in Supabase. No other setup needed.
+
+**Public vs private:** event/recap images use `access: 'public'`. Use `access: 'private'` for
+sensitive files (e.g. application documents) — those are not reachable by URL and must be fetched
+through the admin-only `/api/blob/<pathname>` streaming route.
 
 ---
 
@@ -112,12 +136,14 @@ When `ENABLE_AIRTABLE_SYNC=false`, no Airtable code runs and the keys may be lef
 1. Push this repo to GitHub and **Import** it in Vercel (framework auto-detected as Next.js).
    - Build command: `npm run build` · Install: `npm install` · Output: default. No `vercel.json` needed.
 2. **Add environment variables** (Project → Settings → Environment Variables) — all of the
-   server-side vars above. Paste the bcrypt hash **without quotes** here.
-3. Connect Supabase: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`. Run `0001_init.sql` in your Supabase
+   server-side vars above. Paste the bcrypt hash **raw** (no escaping) here.
+3. Connect Supabase: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
+   `SUPABASE_SERVICE_ROLE_KEY`. Run `0001_init.sql` + `0002_blob_pathnames.sql` in your Supabase
    project if you haven't.
-4. Add Airtable vars **only if** `ENABLE_AIRTABLE_SYNC=true`.
-5. **Deploy.** Visit `/admin` and sign in with your `ADMIN_USERNAME` + password.
+4. **Create a Blob store** (Storage → Create → Blob) and connect it — Vercel adds
+   `BLOB_READ_WRITE_TOKEN` automatically.
+5. Add Airtable vars **only if** `ENABLE_AIRTABLE_SYNC=true`.
+6. **Deploy.** Visit `/admin` and sign in with your `ADMIN_USERNAME` + password.
 
 > The legacy code in `/_archive` and `/outsideatl` is excluded from the build via `.vercelignore`.
 
@@ -138,7 +164,8 @@ When `ENABLE_AIRTABLE_SYNC=false`, no Airtable code runs and the keys may be lef
 | `POST` | `/api/applications` | public | Submit application |
 | `PATCH` | `/api/applications/:id` | admin | Update application status |
 | `POST` | `/api/interest` | public | Concept interest signup |
-| `POST` | `/api/upload` | admin | Upload an image → public URL |
+| `POST` | `/api/upload` | admin | Upload a file to Vercel Blob → `{ url, pathname }` |
+| `GET` | `/api/blob/<pathname>` | admin | Stream a **private** blob (e.g. sensitive files) |
 | `GET` | `/api/admin/rsvps/export` | admin | Download RSVPs as CSV |
 | `POST` | `/api/auth/login` / `logout` | — | Admin session |
 | `GET` | `/api/airtable/sync` | admin | Report sync status |
@@ -160,7 +187,8 @@ app/
   api/               route handlers (see table above)
 components/          layout / public / admin / forms / ui
 lib/
-  supabase/          client (browser) · server (anon) · admin (service role) · storage
+  supabase/          client (browser) · server (anon) · admin (service role)
+  blob/              Vercel Blob upload/delete + validation (server-only)
   airtable/          client + sync (optional, server-only)
   auth/              session (edge-safe JWT) + admin (bcrypt, cookies)
   data/              public + admin read helpers
@@ -174,9 +202,9 @@ middleware.ts        protects /admin/*
 
 ## Security notes
 
-- **No secrets in client code.** Only `NEXT_PUBLIC_*` reaches the browser. The service-role key
-  and Airtable key are imported through `server-only` modules — an accidental client import fails
-  the build.
+- **No secrets in client code.** Only `NEXT_PUBLIC_*` reaches the browser. The service-role key,
+  `BLOB_READ_WRITE_TOKEN`, and Airtable key are imported through `server-only` modules — an
+  accidental client import fails the build. `put()`/`del()`/`get()` run only in route handlers.
 - **Admin auth** is verified server-side with bcrypt; the session is a signed `httpOnly` cookie.
   Credentials never leave the server.
 - **Row Level Security** is enabled on every table; the anon key can only do what the public needs.

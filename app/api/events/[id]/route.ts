@@ -37,8 +37,6 @@ export async function PATCH(request: Request, { params }: Params) {
         status: data.status,
         hero_image_url: data.hero_image_url,
         hero_image_pathname: data.hero_image_pathname,
-        flyer_image_url: data.flyer_image_url,
-        flyer_image_pathname: data.flyer_image_pathname,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -67,7 +65,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     const supabase = requireSupabaseAdmin();
     const { data: existing } = await supabase
       .from('events')
-      .select('hero_image_url, hero_image_pathname, flyer_image_url, flyer_image_pathname')
+      .select('hero_image_url, hero_image_pathname')
       .eq('id', id)
       .maybeSingle();
 
@@ -76,9 +74,8 @@ export async function DELETE(_request: Request, { params }: Params) {
       console.error('[events] delete:', error.message);
       return NextResponse.json({ error: 'Could not delete the event.' }, { status: 500 });
     }
-    // Clean up the event's blobs (best-effort).
+    // Clean up the hero image blob (best-effort).
     await deleteFromBlob(existing?.hero_image_pathname || existing?.hero_image_url);
-    await deleteFromBlob(existing?.flyer_image_pathname || existing?.flyer_image_url);
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (err) {
     console.error('[events] delete error:', err);

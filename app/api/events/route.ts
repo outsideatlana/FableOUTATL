@@ -53,8 +53,6 @@ export async function POST(request: Request) {
         status: data.status,
         hero_image_url: data.hero_image_url,
         hero_image_pathname: data.hero_image_pathname,
-        flyer_image_url: data.flyer_image_url,
-        flyer_image_pathname: data.flyer_image_pathname,
       })
       .select('*')
       .single();

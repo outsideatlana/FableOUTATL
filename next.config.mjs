@@ -7,6 +7,7 @@ const nextConfig = {
     remotePatterns: [
       {
         // Vercel Blob public store (event hero/flyer images, recap photos).
+        // Vercel Blob public store (event hero images, recap photos).
         protocol: 'https',
         hostname: '*.public.blob.vercel-storage.com',
       },

@@ -30,6 +30,3 @@ export function requireSupabaseAdmin(): SupabaseClient {
   }
   return client;
 }
-
-export const STORAGE_BUCKET =
-  process.env.SUPABASE_STORAGE_BUCKET || 'outsideatl-media';
