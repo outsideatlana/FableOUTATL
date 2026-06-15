@@ -91,6 +91,18 @@ export interface InterestSignupRow {
   created_at: string;
 }
 
+/** Source tables that can be soft-hidden from the admin dashboard. */
+export type HiddenSourceTable = 'RSVPS' | 'APPLICATIONS';
+
+export interface AdminHiddenRecordRow {
+  id: string;
+  source_table: HiddenSourceTable;
+  source_record_id: string;
+  hidden_by: string | null;
+  hidden_at: string;
+  reason: string | null;
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -107,6 +119,7 @@ export interface Database {
       interest_signups: Table<InterestSignupRow>;
       signups: Table<SignupRow>;
       hosted: Table<HostedRow>;
+      admin_hidden_records: Table<AdminHiddenRecordRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

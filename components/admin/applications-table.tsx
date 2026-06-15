@@ -10,15 +10,18 @@ import {
   APPLICATION_TYPES,
 } from '@/types/applications';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 
 export function ApplicationsTable({ applications }: { applications: ApplicationRow[] }) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState<'' | ApplicationType>('');
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const filtered = useMemo(
-    () => applications.filter((a) => !typeFilter || a.type === typeFilter),
-    [applications, typeFilter],
+    () => applications.filter((a) => !removed.has(a.id) && (!typeFilter || a.type === typeFilter)),
+    [applications, typeFilter, removed],
   );
 
   async function setStatus(id: string, status: ApplicationStatus) {
@@ -28,6 +31,37 @@ export function ApplicationsTable({ applications }: { applications: ApplicationR
       body: JSON.stringify({ status }),
     });
     router.refresh();
+  }
+
+  /**
+   * Remove an application from the admin dashboard only (soft-delete via
+   * admin_hidden_records). The application stays in Airtable — no Airtable
+   * delete is ever called.
+   */
+  async function removeFromDashboard(a: ApplicationRow) {
+    if (busyId) return;
+    if (!confirm(`Remove ${a.name}'s application from the dashboard? It stays saved in Airtable and can be restored from Hidden.`)) {
+      return;
+    }
+    setBusyId(a.id);
+    try {
+      const res = await fetch('/api/admin/hidden-records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceTable: 'APPLICATIONS', sourceRecordId: a.id, reason: 'Removed from dashboard' }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? 'Could not remove the application. Try again.');
+        return;
+      }
+      setRemoved((prev) => new Set(prev).add(a.id));
+      router.refresh();
+    } catch {
+      alert('Network error. Try again.');
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -63,16 +97,27 @@ export function ApplicationsTable({ applications }: { applications: ApplicationR
                     {a.instagram ? ` · ${a.instagram}` : ''}
                   </p>
                 </div>
-                <Select
-                  value={a.status}
-                  onChange={(e) => setStatus(a.id, e.target.value as ApplicationStatus)}
-                  className="w-44"
-                  aria-label="Application status"
-                >
-                  {APPLICATION_STATUSES.map((s) => (
-                    <option key={s} value={s}>{APPLICATION_STATUS_META[s].label}</option>
-                  ))}
-                </Select>
+                <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                  <Select
+                    value={a.status}
+                    onChange={(e) => setStatus(a.id, e.target.value as ApplicationStatus)}
+                    className="w-44"
+                    aria-label="Application status"
+                  >
+                    {APPLICATION_STATUSES.map((s) => (
+                      <option key={s} value={s}>{APPLICATION_STATUS_META[s].label}</option>
+                    ))}
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="hot"
+                    disabled={busyId === a.id}
+                    onClick={() => removeFromDashboard(a)}
+                    title="Removes this application from the dashboard only — it stays in Airtable"
+                  >
+                    {busyId === a.id ? 'Removing…' : 'Remove from dashboard'}
+                  </Button>
+                </div>
               </div>
               {a.portfolio_url && (
                 <a href={a.portfolio_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block break-all font-mono text-xs text-electric-400 hover:text-white">

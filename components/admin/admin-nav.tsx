@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/admin/applications', label: 'Applications' },
   { href: '/admin/recaps', label: 'Recaps' },
   { href: '/admin/hosted', label: 'Hosted' },
+  { href: '/admin/hidden-records', label: 'Hidden' },
 ];
 
 export function AdminNav() {

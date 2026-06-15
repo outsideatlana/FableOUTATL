@@ -1,13 +1,35 @@
 import 'server-only';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type {
+  AdminHiddenRecordRow,
   ApplicationRow,
   ApplicationType,
   EventRow,
+  HiddenSourceTable,
   HostedRow,
   RecapRow,
   RsvpRow,
 } from '@/types/database';
+
+/**
+ * Ids that admins have hidden from the dashboard for a given source table.
+ * Returns an empty set on any error (e.g. the table not migrated yet) so the
+ * admin view degrades gracefully rather than going blank. Airtable is never
+ * consulted or modified here.
+ */
+async function getHiddenRecordIds(source: HiddenSourceTable): Promise<Set<string>> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return new Set();
+  const { data, error } = await supabase
+    .from('admin_hidden_records')
+    .select('source_record_id')
+    .eq('source_table', source);
+  if (error) {
+    console.error('[admin-data] hidden ids:', error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((r) => r.source_record_id as string));
+}
 
 /**
  * Privileged reads for the admin dashboard (service role, bypasses RLS).
@@ -55,10 +77,13 @@ export async function getAdminRsvps(eventId?: string): Promise<AdminRsvp[]> {
     console.error('[admin-data] rsvps:', error.message);
     return [];
   }
-  return (data ?? []).map((r) => {
-    const { events, ...rest } = r as RsvpRow & { events: { title: string } | null };
-    return { ...rest, event_title: events?.title ?? null };
-  });
+  const hidden = await getHiddenRecordIds('RSVPS');
+  return (data ?? [])
+    .filter((r) => !hidden.has(r.id))
+    .map((r) => {
+      const { events, ...rest } = r as RsvpRow & { events: { title: string } | null };
+      return { ...rest, event_title: events?.title ?? null };
+    });
 }
 
 export async function getAdminApplications(
@@ -76,7 +101,8 @@ export async function getAdminApplications(
     console.error('[admin-data] applications:', error.message);
     return [];
   }
-  return data ?? [];
+  const hidden = await getHiddenRecordIds('APPLICATIONS');
+  return (data ?? []).filter((a) => !hidden.has(a.id));
 }
 
 export interface AdminRecap extends RecapRow {
@@ -124,4 +150,48 @@ export async function getAdminHosted(): Promise<HostedRow[]> {
     return [];
   }
   return data ?? [];
+}
+
+export interface HiddenRecord extends AdminHiddenRecordRow {
+  /** Human label looked up from the still-present source row, if available. */
+  label: string;
+}
+
+/**
+ * All records currently hidden from the dashboard, newest first, with a
+ * human-readable label resolved from the underlying (un-deleted) Supabase
+ * rows. Powers the "Hidden Records" restore view.
+ */
+export async function getHiddenRecords(): Promise<HiddenRecord[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('admin_hidden_records')
+    .select('*')
+    .order('hidden_at', { ascending: false });
+  if (error) {
+    console.error('[admin-data] hidden records:', error.message);
+    return [];
+  }
+  const rows = (data ?? []) as AdminHiddenRecordRow[];
+
+  const idsByTable = (t: HiddenSourceTable) =>
+    rows.filter((r) => r.source_table === t).map((r) => r.source_record_id);
+  const labels = new Map<string, string>();
+
+  const rsvpIds = idsByTable('RSVPS');
+  if (rsvpIds.length > 0) {
+    const { data: rs } = await supabase.from('rsvps').select('id, name, email').in('id', rsvpIds);
+    for (const r of rs ?? []) labels.set(`RSVPS:${r.id}`, `${r.name} · ${r.email}`);
+  }
+  const appIds = idsByTable('APPLICATIONS');
+  if (appIds.length > 0) {
+    const { data: as } = await supabase.from('applications').select('id, name, email').in('id', appIds);
+    for (const a of as ?? []) labels.set(`APPLICATIONS:${a.id}`, `${a.name} · ${a.email}`);
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    label: labels.get(`${r.source_table}:${r.source_record_id}`) ?? r.source_record_id,
+  }));
 }

@@ -101,6 +101,26 @@ export const hostedSchema = z.object({
 });
 export type HostedInput = z.infer<typeof hostedSchema>;
 
+/**
+ * Admin "hide from dashboard" actions. `sourceRecordId` is the Supabase row
+ * id of the RSVP / application being hidden — Airtable is never touched.
+ */
+export const HIDDEN_SOURCE_TABLES = ['RSVPS', 'APPLICATIONS'] as const;
+
+export const hideRecordSchema = z.object({
+  sourceTable: z.enum(HIDDEN_SOURCE_TABLES),
+  sourceRecordId: z.string().trim().min(1, 'A record id is required.').max(200),
+  reason: optionalText(500),
+});
+export type HideRecordInput = z.infer<typeof hideRecordSchema>;
+
+/** Restore (unhide) a record — identified by table + id. */
+export const unhideRecordSchema = z.object({
+  sourceTable: z.enum(HIDDEN_SOURCE_TABLES),
+  sourceRecordId: z.string().trim().min(1, 'A record id is required.').max(200),
+});
+export type UnhideRecordInput = z.infer<typeof unhideRecordSchema>;
+
 /** Flatten zod errors into a { field: message } map for the UI. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
