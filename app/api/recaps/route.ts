@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
 import { getPublicRecaps } from '@/lib/data/public';
-import { uploadImage, UploadError } from '@/lib/supabase/storage';
+import {
+  uploadToBlob,
+  assertValidUpload,
+  UploadValidationError,
+  IMAGE_TYPES,
+} from '@/lib/blob/upload';
 import { recapMetaSchema, fieldErrors } from '@/lib/validation/schemas';
 import { airtable } from '@/lib/airtable/sync';
 
@@ -40,13 +45,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const imageUrl = await uploadImage(file, 'recaps');
+    assertValidUpload(file, IMAGE_TYPES);
+    const blob = await uploadToBlob({
+      folder: 'recaps',
+      filename: file.name,
+      body: file,
+      contentType: file.type,
+      access: 'public',
+    });
+
     const supabase = requireSupabaseAdmin();
     const { data: recap, error } = await supabase
       .from('recaps')
       .insert({
         event_id: parsed.data.event_id,
-        image_url: imageUrl,
+        image_url: blob.url,
+        image_pathname: blob.pathname,
         caption: parsed.data.caption,
         sort_order: parsed.data.sort_order,
       })
@@ -60,7 +74,7 @@ export async function POST(request: Request) {
     await airtable.recap({ caption: recap.caption, image_url: recap.image_url });
     return NextResponse.json({ ok: true, recap }, { status: 201 });
   } catch (err) {
-    if (err instanceof UploadError) {
+    if (err instanceof UploadValidationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error('[recaps] error:', err);

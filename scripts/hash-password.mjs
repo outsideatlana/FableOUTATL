@@ -13,4 +13,14 @@ if (!password) {
 }
 
 const hash = await bcrypt.hash(password, 10);
+
+// bcrypt hashes contain "$", which Next.js (@next/env) expands as $VAR in
+// .env files — corrupting the hash. Escaping each "$" as "\$" is the only
+// reliable fix (single quotes are NOT). Print a paste-ready line for
+// .env.local plus the raw hash for the Vercel dashboard.
+const escaped = hash.replace(/\$/g, '\\$');
+
+console.log('\nRaw hash (paste into the Vercel dashboard env var):');
 console.log(hash);
+console.log('\nFor .env.local (note the escaped $ — paste this whole line):');
+console.log(`ADMIN_PASSWORD_HASH=${escaped}`);
