@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Field, Input } from '@/components/ui/field';
-import { Button } from '@/components/ui/button';
 
+/**
+ * "Gauge My Interest" signup — PRESERVED behavior. Posts to /api/interest
+ * with the concept name (Supabase + optional Airtable on the backend) and
+ * shows success/error states. Restyled to the Lovable look only.
+ */
 export function InterestForm({ concept }: { concept: string }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -49,20 +52,48 @@ export function InterestForm({ concept }: { concept: string }) {
 
   return (
     <form onSubmit={onSubmit} className="mt-4 space-y-3" noValidate>
-      <Field label="Name (optional)" htmlFor={`int-name-${concept}`} error={errors.name}>
-        <Input id={`int-name-${concept}`} name="name" autoComplete="name" />
-      </Field>
-      <Field label="Email" htmlFor={`int-email-${concept}`} error={errors.email}>
-        <Input id={`int-email-${concept}`} name="email" type="email" autoComplete="email" required />
-      </Field>
-      <Field label="Phone (optional)" htmlFor={`int-phone-${concept}`} error={errors.phone}>
-        <Input id={`int-phone-${concept}`} name="phone" type="tel" autoComplete="tel" />
-      </Field>
-      <Button type="submit" disabled={status === 'loading'} className="w-full">
+      <div>
+        <input
+          name="name"
+          autoComplete="name"
+          placeholder="Name"
+          aria-label="Name"
+          className="field-input"
+        />
+        {errors.name && <p className="field-error">{errors.name}</p>}
+      </div>
+      <div>
+        <input
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="Email *"
+          aria-label="Email"
+          className="field-input"
+        />
+        {errors.email && <p className="field-error">{errors.email}</p>}
+      </div>
+      <div>
+        <input
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          placeholder="Phone"
+          aria-label="Phone"
+          className="field-input"
+        />
+        {errors.phone && <p className="field-error">{errors.phone}</p>}
+      </div>
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="w-full bg-accent px-6 py-3 font-display text-lg uppercase tracking-tight text-accent-foreground transition-transform hover:scale-[1.01] disabled:opacity-50"
+      >
         {status === 'loading' ? 'Sending…' : "I'm Interested"}
-      </Button>
+      </button>
       {message && (
-        <p className={status === 'error' ? 'field-error' : 'text-xs text-electric-400'}>{message}</p>
+        <p className={status === 'error' ? 'field-error' : 'text-xs text-red-600'}>{message}</p>
       )}
     </form>
   );

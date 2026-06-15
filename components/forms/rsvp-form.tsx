@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Field, Input, Select, Textarea } from '@/components/ui/field';
-import { Button } from '@/components/ui/button';
 
 interface EventOption {
   id: string;
   title: string;
 }
 
+/**
+ * Pre-RSVP form — PRESERVED behavior. Posts to /api/rsvp (Supabase +
+ * optional Airtable). Fields match the backend schema; styling matches the
+ * Lovable design.
+ */
 export function RsvpForm({
   events,
   defaultEventId,
@@ -53,7 +56,7 @@ export function RsvpForm({
       }
       form.reset();
       setStatus('success');
-      setMessage("You're locked in. See you outside.");
+      setMessage("You're on the list. We'll be in touch.");
     } catch {
       setStatus('error');
       setMessage('Network error. Try again.');
@@ -61,39 +64,38 @@ export function RsvpForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <Field label="Full Name" htmlFor="rsvp-name" error={errors.name}>
-        <Input id="rsvp-name" name="name" autoComplete="name" required />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Email" htmlFor="rsvp-email" error={errors.email}>
-          <Input id="rsvp-email" name="email" type="email" autoComplete="email" required />
-        </Field>
-        <Field label="Phone" htmlFor="rsvp-phone" error={errors.phone}>
-          <Input id="rsvp-phone" name="phone" type="tel" autoComplete="tel" />
-        </Field>
+    <form onSubmit={onSubmit} className="space-y-3" aria-label="Pre-RSVP form" noValidate>
+      <div>
+        <input name="name" required autoComplete="name" placeholder="Full name *" aria-label="Full name" className="field-input" />
+        {errors.name && <p className="field-error">{errors.name}</p>}
       </div>
-      <Field label="Event" htmlFor="rsvp-event" error={errors.event_id}>
-        <Select id="rsvp-event" name="event_id" defaultValue={defaultEventId ?? ''}>
-          <option value="">Any upcoming event</option>
-          {events.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.title}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Instagram (optional)" htmlFor="rsvp-ig" error={errors.instagram}>
-        <Input id="rsvp-ig" name="instagram" placeholder="@yourhandle" />
-      </Field>
-      <Field label="Notes (optional)" htmlFor="rsvp-notes" error={errors.notes}>
-        <Textarea id="rsvp-notes" name="notes" rows={3} />
-      </Field>
-      <Button type="submit" disabled={status === 'loading'}>
-        {status === 'loading' ? 'Sending…' : 'RSVP'}
-      </Button>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <input name="email" type="email" required autoComplete="email" placeholder="Email *" aria-label="Email" className="field-input" />
+          {errors.email && <p className="field-error">{errors.email}</p>}
+        </div>
+        <div>
+          <input name="phone" type="tel" autoComplete="tel" placeholder="Phone" aria-label="Phone" className="field-input" />
+          {errors.phone && <p className="field-error">{errors.phone}</p>}
+        </div>
+      </div>
+      <input name="instagram" placeholder="@instagram" aria-label="Instagram handle" className="field-input" />
+      <select name="event_id" defaultValue={defaultEventId ?? ''} aria-label="Event of interest" className="field-input cursor-pointer">
+        <option value="">Interested in: any event</option>
+        {events.map((ev) => (
+          <option key={ev.id} value={ev.id}>{ev.title}</option>
+        ))}
+      </select>
+      <textarea name="notes" rows={3} placeholder="Anything else?" aria-label="Notes" className="field-input resize-y" />
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="w-full bg-accent px-8 py-4 font-display text-xl uppercase tracking-tight text-accent-foreground transition-transform hover:scale-[1.01] disabled:opacity-50"
+      >
+        {status === 'loading' ? 'Sending…' : 'Pre-RSVP'}
+      </button>
       {message && (
-        <p className={status === 'error' ? 'field-error' : 'text-sm text-electric-400'}>{message}</p>
+        <p className={status === 'error' ? 'field-error' : 'text-sm text-red-600'}>{message}</p>
       )}
     </form>
   );
