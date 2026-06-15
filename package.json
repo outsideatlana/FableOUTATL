@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
+    "@vercel/speed-insights": "^2.0.0",
     "airtable": "^0.12.2",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
