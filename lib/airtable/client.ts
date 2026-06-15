@@ -9,11 +9,20 @@ import 'server-only';
  * sync is disabled or the package/credentials are absent.
  */
 
+/**
+ * True when Airtable credentials exist (API key + base id), regardless of the
+ * optional-mirror flag. The "What should we throw next?" interest form writes
+ * to Airtable as its PRIMARY store, so it depends only on credentials — not on
+ * ENABLE_AIRTABLE_SYNC (which gates the optional mirroring of Supabase forms).
+ */
+export function isAirtableConfigured(): boolean {
+  return Boolean(process.env.AIRTABLE_API_KEY) && Boolean(process.env.AIRTABLE_BASE_ID);
+}
+
 export function isAirtableEnabled(): boolean {
   return (
     String(process.env.ENABLE_AIRTABLE_SYNC).toLowerCase() === 'true' &&
-    Boolean(process.env.AIRTABLE_API_KEY) &&
-    Boolean(process.env.AIRTABLE_BASE_ID)
+    isAirtableConfigured()
   );
 }
 
@@ -43,7 +52,7 @@ export function tableName(key: AirtableTableKey): string | null {
  * The dynamic import means `airtable` is only required at runtime when used.
  */
 export async function getAirtableBase() {
-  if (!isAirtableEnabled()) return null;
+  if (!isAirtableConfigured()) return null;
   const { default: Airtable } = await import('airtable');
   return new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(
     process.env.AIRTABLE_BASE_ID as string,
