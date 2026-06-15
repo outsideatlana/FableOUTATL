@@ -4,6 +4,7 @@ import type {
   ApplicationRow,
   ApplicationType,
   EventRow,
+  HostedRow,
   RecapRow,
   RsvpRow,
 } from '@/types/database';
@@ -98,6 +99,21 @@ export async function getAdminRecaps(): Promise<AdminRecap[]> {
     const { events, ...rest } = r as RecapRow & { events: { title: string } | null };
     return { ...rest, event_title: events?.title ?? null };
   });
+}
+
+export async function getAdminHosted(): Promise<HostedRow[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('hosted')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.error('[admin-data] hosted:', error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getAdminEventOptions(): Promise<Pick<EventRow, 'id' | 'title'>[]> {

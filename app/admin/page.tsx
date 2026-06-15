@@ -4,6 +4,7 @@ import { isAirtableEnabled } from '@/lib/airtable/client';
 import {
   getAdminApplications,
   getAdminEvents,
+  getAdminHosted,
   getAdminRecaps,
   getAdminRsvps,
 } from '@/lib/data/admin';
@@ -12,11 +13,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminOverview() {
   const configured = isSupabaseConfigured();
-  const [events, rsvps, applications, recaps] = await Promise.all([
+  const [events, rsvps, applications, recaps, hosted] = await Promise.all([
     getAdminEvents(),
     getAdminRsvps(),
     getAdminApplications(),
     getAdminRecaps(),
+    getAdminHosted(),
   ]);
   const newApps = applications.filter((a) => a.status === 'new').length;
 
@@ -25,6 +27,7 @@ export default async function AdminOverview() {
     { label: 'RSVPs', value: rsvps.length, href: '/admin/rsvps' },
     { label: 'Applications', value: applications.length, href: '/admin/applications', note: `${newApps} new` },
     { label: 'Recap Photos', value: recaps.length, href: '/admin/recaps' },
+    { label: 'Hosted', value: hosted.length, href: '/admin/hosted' },
   ];
 
   return (

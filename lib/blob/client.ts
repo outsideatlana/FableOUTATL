@@ -24,7 +24,7 @@ export async function uploadImageToBlob({
   folder,
 }: {
   file: File;
-  folder: 'events' | 'recaps' | 'applications' | 'interest';
+  folder: 'events' | 'recaps' | 'applications' | 'interest' | 'hosted';
 }): Promise<BlobUploadResult> {
   if (!ALLOWED_TYPES.includes(file.type)) {
     throw new Error('Only JPG, PNG, WEBP, and GIF files are allowed.');

@@ -15,7 +15,7 @@ import { del } from '@vercel/blob';
 export const MAX_SERVER_UPLOAD_BYTES = 4.5 * 1024 * 1024; // 4.5 MB
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-export const UPLOAD_FOLDERS = ['events', 'recaps', 'applications', 'interest'] as const;
+export const UPLOAD_FOLDERS = ['events', 'recaps', 'applications', 'interest', 'hosted'] as const;
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];
 
 /** Sanitize a filename into a safe `folder/<ts>-<name>` pathname. */

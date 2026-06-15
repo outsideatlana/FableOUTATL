@@ -101,6 +101,21 @@ export const recapMetaSchema = z.object({
 });
 export type RecapMetaInput = z.infer<typeof recapMetaSchema>;
 
+/** "Who We've Hosted" entry (create + update). Image already uploaded to Blob. */
+export const hostedSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(120),
+  image_url: optionalText(1000),
+  image_pathname: optionalText(1000),
+  description: optionalText(500),
+  link_url: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+    .refine((v) => v == null || /^https?:\/\/.+/.test(v), 'Link must be a valid http(s) URL.'),
+  sort_order: z.coerce.number().int().min(0).max(10000).default(0),
+  published: z.boolean().default(true),
+});
+export type HostedInput = z.infer<typeof hostedSchema>;
+
 /** Flatten zod errors into a { field: message } map for the UI. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
