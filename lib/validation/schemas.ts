@@ -66,6 +66,7 @@ export const eventSchema = z.object({
   location: optionalText(200),
   status: z.enum(['draft', 'published', 'sold_out', 'archived']).default('draft'),
   hero_image_url: optionalText(1000),
+  hero_image_pathname: optionalText(1000),
 });
 export type EventInput = z.infer<typeof eventSchema>;
 

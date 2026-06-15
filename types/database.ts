@@ -21,6 +21,7 @@ export interface EventRow {
   event_date: string | null;
   location: string | null;
   hero_image_url: string | null;
+  hero_image_pathname: string | null;
   status: EventStatus;
   created_at: string;
   updated_at: string;
@@ -55,6 +56,7 @@ export interface RecapRow {
   id: string;
   event_id: string | null;
   image_url: string;
+  image_pathname: string | null;
   caption: string | null;
   sort_order: number;
   created_at: string;

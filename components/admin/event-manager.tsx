@@ -22,6 +22,7 @@ const EMPTY = {
   description: '',
   status: 'draft' as EventStatus,
   hero_image_url: '',
+  hero_image_pathname: '',
 };
 
 /** ISO timestamp -> value for <input type="datetime-local">. */
@@ -62,6 +63,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
       description: ev.description ?? '',
       status: ev.status,
       hero_image_url: ev.hero_image_url ?? '',
+      hero_image_pathname: ev.hero_image_pathname ?? '',
     });
     setFile(null);
     setPreview(ev.hero_image_url ?? '');
@@ -76,15 +78,16 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     setPreview(f ? URL.createObjectURL(f) : form.hero_image_url);
   }
 
-  async function uploadHero(): Promise<string> {
-    if (!file) return form.hero_image_url;
+  async function uploadHero(): Promise<{ url: string; pathname: string }> {
+    if (!file) return { url: form.hero_image_url, pathname: form.hero_image_pathname };
     const fd = new FormData();
-    fd.append('image', file);
+    fd.append('file', file);
     fd.append('folder', 'events');
+    fd.append('access', 'public');
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? 'Image upload failed.');
-    return body.url as string;
+    return { url: body.url as string, pathname: (body.pathname as string) ?? '' };
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -94,7 +97,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     setErrors({});
     setStatus('');
     try {
-      const hero_image_url = await uploadHero();
+      const { url: hero_image_url, pathname: hero_image_pathname } = await uploadHero();
       const payload = {
         title: form.title,
         slug: form.slug || undefined,
@@ -103,6 +106,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
         description: form.description,
         status: form.status,
         hero_image_url,
+        hero_image_pathname,
       };
       const res = await fetch(editing ? `/api/events/${form.id}` : '/api/events', {
         method: editing ? 'PATCH' : 'POST',
@@ -136,6 +140,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
         description: ev.description,
         status: next,
         hero_image_url: ev.hero_image_url,
+        hero_image_pathname: ev.hero_image_pathname,
       }),
     });
     router.refresh();
