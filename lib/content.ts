@@ -1,0 +1,43 @@
+import type { EventConcept } from '@/types/events';
+
+/** Concept cards shown on the homepage to gauge interest before booking. */
+export const EVENT_CONCEPTS: EventConcept[] = [
+  {
+    name: 'Silent Disco',
+    tagline: 'Rooftop / 3 channels',
+    description: 'Three DJs, three channels, one rooftop of glowing headphones. Pick your frequency.',
+  },
+  {
+    name: 'Warehouse Rave',
+    tagline: 'After-hours / BYOEnergy',
+    description: 'Raw space, heavy sound system, lights for days. Doors late, ends later.',
+  },
+  {
+    name: 'Day Party',
+    tagline: 'Golden hour / open air',
+    description: 'Sun, speakers, and the city skyline. The pregame that becomes the main event.',
+  },
+  {
+    name: 'Campus Takeover',
+    tagline: 'College nightlife',
+    description: 'Student-run energy, big-room headliners, the night your campus talks about for weeks.',
+  },
+  {
+    name: 'Artist Pop-Up',
+    tagline: 'One night only',
+    description: 'Rising ATL artists, local vendors, visuals on every wall. When it is gone, it is gone.',
+  },
+  {
+    name: 'Rooftop Game Night',
+    tagline: 'Social / chill',
+    description: 'Spades, dominoes, UNO, and a DJ keeping the energy right. Bring a partner or get drafted.',
+  },
+];
+
+/** Social-proof / notable artists & events hosted. */
+export const ARTIST_PROOF: { name: string; note: string }[] = [
+  { name: 'Local Headliners', note: 'ATL DJs & producers' },
+  { name: 'Sold-Out Rooftops', note: 'Midtown / O4W' },
+  { name: 'Campus Tours', note: 'AUC & beyond' },
+  { name: 'Vendor Markets', note: '50+ local makers' },
+];

@@ -1,64 +1,71 @@
 # OutsideAtl
 
-Live music & social events platform for Atlanta — parties, festivals, concerts, raves, pop-ups. A public landing page with RSVP/signup/application forms, plus a protected admin dashboard for managing events. Built with vanilla HTML/CSS/JS on the front and Node + Express + SQLite on the back.
+Live music & events platform for Atlanta — parties, festivals, concerts, raves, and campus
+nightlife. Public site for advertising events, collecting pre-RSVPs, gauging interest in
+concepts, and taking applications (interns / freelancers / vendors / DJs), plus a secure admin
+dashboard for managing events, RSVPs, applications, and recap photos.
+
+**Vercel-first · Supabase-first · Airtable-compatible.**
+
+- **Framework:** Next.js 15 (App Router) + React 19 + TypeScript
+- **Styling:** Tailwind CSS (dark nightlife brand system)
+- **Database / Storage:** Supabase (Postgres + Storage, with Row Level Security)
+- **Admin auth:** env credentials verified with bcrypt → signed `httpOnly` JWT session cookie
+- **CRM mirror (optional):** Airtable, server-side only, toggled by env
 
 ---
 
-## Folder structure
-
-```
-outsideatl/
-├── server.js                 # Express entry point — sessions, routes, static files
-├── database.js               # SQLite setup, table creation, default event seeding
-├── validators.js             # Shared backend validation helpers
-├── middleware/
-│   └── requireAdmin.js       # Session check for admin-only routes
-├── routes/
-│   ├── auth.js               # POST login/logout, GET me
-│   ├── events.js             # Public GET + admin CRUD for events
-│   └── forms.js              # POST rsvps / signups / applications
-├── public/
-│   ├── index.html            # Landing page
-│   ├── styles.css            # Design system + landing page styles
-│   ├── script.js             # Events rendering + all public forms
-│   ├── admin.html            # Login + dashboard (one page, two views)
-│   ├── admin.css             # Dashboard styles
-│   └── admin.js              # Auth flow + event CRUD UI
-├── scripts/
-│   └── hash-password.js      # Generates the bcrypt hash for .env
-├── .env.example              # Environment variable template
-├── package.json
-└── outsideatl.db             # SQLite database (created on first run)
-```
-
-## Requirements
-
-- **Node.js 22.5 or newer.** The database layer uses Node's built-in `node:sqlite` module, so there are **no native dependencies** — nothing to compile, installs cleanly on macOS/Windows/Linux. (Node 22 is the current LTS; check with `node -v`.)
-
-## Installation & running
+## Quick start (local)
 
 ```bash
 npm install
-cp .env.example .env     # then edit .env (see below)
-npm start                # → http://localhost:3000
+cp .env.example .env.local      # then edit .env.local (see below)
+npm run dev                     # http://localhost:3000
 ```
 
-`npm run dev` starts the server with auto-restart on file changes.
+The app **builds and runs without any secrets** — pages render with empty data and submissions
+return a friendly "temporarily unavailable" until Supabase is configured. To exercise the full
+app locally you need a Supabase project (below).
 
-- Landing page: `http://localhost:3000`
-- Admin: `http://localhost:3000/admin`
+Verify a production build at any time:
+
+```bash
+npm install
+npm run lint
+npm run build
+```
+
+---
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` → `.env.local`. Only `NEXT_PUBLIC_*` values are exposed to the browser;
+everything else is server-only. **Never commit `.env.local`.**
 
-| Variable | What it is |
-|---|---|
-| `PORT` | Server port (default 3000) |
-| `SESSION_SECRET` | Long random string that signs session cookies |
-| `ADMIN_USERNAME` | Admin login username |
-| `ADMIN_PASSWORD_HASH` | **bcrypt hash** of the admin password (never the password itself) |
-| `DB_PATH` | Optional custom path for the SQLite file |
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key (RLS-guarded) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server** | Privileged key — bypasses RLS. Server only. |
+| `SUPABASE_STORAGE_BUCKET` | server | Storage bucket name (default `outsideatl-media`) |
+| `ADMIN_USERNAME` | server | Admin login username |
+| `ADMIN_PASSWORD_HASH` | server | **bcrypt hash** of the admin password |
+| `SESSION_SECRET` | server | Long random string signing the session JWT |
+| `ENABLE_AIRTABLE_SYNC` | server | `true`/`false` — mirror submissions to Airtable |
+| `AIRTABLE_API_KEY` | **server** | Airtable personal access token |
+| `AIRTABLE_BASE_ID` | server | Airtable base id |
+| `AIRTABLE_*_TABLE` | server | Table names (Events/RSVPs/Applications/Recaps/Signups) |
+
+### Generate the admin password hash
+
+```bash
+npm run hash-password -- "yourStrongPassword"
+```
+
+> ⚠️ **bcrypt hashes contain `$`.** In `.env.local`, Next.js expands `$VAR`, which corrupts the
+> hash. **Wrap it in single quotes** in `.env.local`:
+> `ADMIN_PASSWORD_HASH='$2a$10$....'`
+> In the **Vercel dashboard**, paste the raw hash (no quotes) — it isn't parsed that way.
 
 Generate a session secret:
 
@@ -66,83 +73,121 @@ Generate a session secret:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## Admin login setup
+---
 
-1. Pick a strong password.
-2. Generate its bcrypt hash:
+## Supabase setup (manual steps)
 
-   ```bash
-   npm run hash-password -- "yourStrongPassword"
-   ```
+1. Create a project at [supabase.com](https://supabase.com). Copy the **Project URL** and the
+   **anon** and **service_role** keys (Project Settings → API).
+2. **Run the schema:** open the SQL editor and run `supabase/migrations/0001_init.sql`. This
+   creates all tables, enables Row Level Security with the right policies, and creates the
+   `outsideatl-media` storage bucket (public read; uploads server-only).
+3. *(Optional)* run `supabase/seed.sql` for a few sample events.
+4. Put the URL + keys into `.env.local` (and later into Vercel).
 
-3. Paste the printed `ADMIN_PASSWORD_HASH=...` line into `.env`.
-4. Set `ADMIN_USERNAME` in `.env`.
-5. Restart the server and sign in at `/admin`.
+That's it — no manual table or policy clicking required; it's all in the migration.
 
-The plaintext password is never stored anywhere. Login is verified server-side with `bcrypt.compare()`, and a successful login creates an `httpOnly` session cookie.
+**Security model:** the browser only ever uses the anon key (RLS lets the public read published
+events + recaps and insert RSVPs/applications/signups — nothing else). All admin reads/writes go
+through server routes using the service-role key, which is never sent to the client.
 
-## Database setup
+---
 
-Nothing to do manually. On boot, `database.js`:
+## Airtable setup (optional)
 
-1. Opens (or creates) `outsideatl.db`
-2. Creates the `events`, `rsvps`, `signups`, and `applications` tables if missing
-3. Seeds three default events (**Silent Disco**, **Rooftop Game Night**, **Artist Pop-Up**) — only if the events table is empty, so your edits are never overwritten
+Airtable mirrors public submissions into a spreadsheet UI. It's entirely optional and off by
+default. Supabase is always the source of truth; a failed Airtable sync never breaks a submission.
 
-To reset everything, stop the server and delete `outsideatl.db*` (including the `-wal`/`-shm` files).
+1. Create a base with tables matching `AIRTABLE_*_TABLE` (defaults: `Events`, `RSVPs`,
+   `Applications`, `Recaps`, `Signups`).
+2. Create a personal access token with write access; copy the **Base ID**.
+3. Set `ENABLE_AIRTABLE_SYNC=true` plus `AIRTABLE_API_KEY` / `AIRTABLE_BASE_ID` in env.
+
+When `ENABLE_AIRTABLE_SYNC=false`, no Airtable code runs and the keys may be left blank.
+
+---
+
+## Deploy to Vercel
+
+1. Push this repo to GitHub and **Import** it in Vercel (framework auto-detected as Next.js).
+   - Build command: `npm run build` · Install: `npm install` · Output: default. No `vercel.json` needed.
+2. **Add environment variables** (Project → Settings → Environment Variables) — all of the
+   server-side vars above. Paste the bcrypt hash **without quotes** here.
+3. Connect Supabase: add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`. Run `0001_init.sql` in your Supabase
+   project if you haven't.
+4. Add Airtable vars **only if** `ENABLE_AIRTABLE_SYNC=true`.
+5. **Deploy.** Visit `/admin` and sign in with your `ADMIN_USERNAME` + password.
+
+> The legacy code in `/_archive` and `/outsideatl` is excluded from the build via `.vercelignore`.
+
+---
 
 ## API routes
 
-### Public
+| Method | Route | Access | Purpose |
+|---|---|---|---|
+| `GET` | `/api/events` | public | Published events |
+| `POST` | `/api/events` | admin | Create event |
+| `PATCH`/`DELETE` | `/api/events/:id` | admin | Update / delete event |
+| `GET` | `/api/recaps` | public | Recap gallery |
+| `POST` | `/api/recaps` | admin | Upload recap (multipart) |
+| `PATCH`/`DELETE` | `/api/recaps/:id` | admin | Edit / delete recap |
+| `POST` | `/api/recaps/reorder` | admin | Persist gallery order |
+| `POST` | `/api/rsvp` | public | Submit RSVP |
+| `POST` | `/api/applications` | public | Submit application |
+| `PATCH` | `/api/applications/:id` | admin | Update application status |
+| `POST` | `/api/interest` | public | Concept interest signup |
+| `POST` | `/api/upload` | admin | Upload an image → public URL |
+| `GET` | `/api/admin/rsvps/export` | admin | Download RSVPs as CSV |
+| `POST` | `/api/auth/login` / `logout` | — | Admin session |
+| `GET` | `/api/airtable/sync` | admin | Report sync status |
 
-| Method | Route | Purpose |
-|---|---|---|
-| `GET`  | `/api/events` | List events (homepage reads this) |
-| `POST` | `/api/rsvps` | `{ name, email, phone, event_name }` |
-| `POST` | `/api/signups` | `{ email, phone }` — the 5%-off list |
-| `POST` | `/api/applications` | `{ application_type: career\|internship\|vendor, name, email, role_interest, message }` |
+Validation errors return `400` with `{ error, fields }`; auth failures `401`; missing config `503`.
 
-### Auth
+---
 
-| Method | Route | Purpose |
-|---|---|---|
-| `POST` | `/api/auth/login` | `{ username, password }` → session cookie |
-| `POST` | `/api/auth/logout` | Destroys the session |
-| `GET`  | `/api/auth/me` | `{ authenticated, username }` |
+## Project structure
 
-### Admin-only (require a logged-in session)
+```
+app/
+  (site)/            public site (nav + footer layout)
+    page.tsx         homepage: hero, events, concepts, recaps, proof, RSVP
+    events/          list + [slug] detail
+    apply/[type]/    intern | freelancer | vendor
+    dj/              DJ & artist submission
+  admin/             secure dashboard (login, events, rsvps, applications, recaps)
+  api/               route handlers (see table above)
+components/          layout / public / admin / forms / ui
+lib/
+  supabase/          client (browser) · server (anon) · admin (service role) · storage
+  airtable/          client + sync (optional, server-only)
+  auth/              session (edge-safe JWT) + admin (bcrypt, cookies)
+  data/              public + admin read helpers
+  validation/        zod schemas
+types/               database + domain types
+supabase/            migrations + seed
+middleware.ts        protects /admin/*
+```
 
-| Method | Route | Purpose |
-|---|---|---|
-| `POST`   | `/api/events` | Create an event |
-| `PUT`    | `/api/events/:id` | Update an event |
-| `DELETE` | `/api/events/:id` | Delete an event |
+---
 
-Validation errors return `400` with `{ error, fields: { fieldName: message } }`. Auth failures return `401`. Unknown IDs return `404`. Server faults return `500` with a generic message (details are logged server-side only).
+## Security notes
 
-## Frontend ↔ backend integration notes
+- **No secrets in client code.** Only `NEXT_PUBLIC_*` reaches the browser. The service-role key
+  and Airtable key are imported through `server-only` modules — an accidental client import fails
+  the build.
+- **Admin auth** is verified server-side with bcrypt; the session is a signed `httpOnly` cookie.
+  Credentials never leave the server.
+- **Row Level Security** is enabled on every table; the anon key can only do what the public needs.
+- `.env.local` is gitignored; `.env.example` holds placeholders only.
+- For production, consider adding rate limiting to `/api/auth/login` and the public form routes.
 
-- The landing page fetches events from `GET /api/events` at load — event cards are **not** hardcoded in HTML.
-- All form submissions go to the API and persist in SQLite. `localStorage` is not used for any data that matters.
-- All dynamic text is rendered with `textContent`/`createElement`, never `innerHTML`, so user- or admin-entered content can't inject markup.
-- The dashboard checks `GET /api/auth/me` on load to decide whether to show login or the dashboard. If a session expires mid-use, a `401` from any write route bounces the admin back to login.
-- Frontend validation is a UX nicety only; the backend re-validates every request.
+---
 
-## Deployment notes
+## Legacy code
 
-- Run behind HTTPS (a reverse proxy like Caddy/Nginx, or a host like Render/Railway/Fly).
-- Once on HTTPS, set `cookie.secure: true` in `server.js` and add `app.set('trust proxy', 1)` if behind a proxy.
-- Replace the default in-memory session store with a persistent one (e.g. `better-sqlite3-session-store` or `connect-redis`) — MemoryStore forgets sessions on restart and leaks memory under load.
-- The SQLite file must live on a **persistent disk**. On ephemeral hosts, set `DB_PATH` to a mounted volume.
-- Set real values for `SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` in the host's environment settings — never commit `.env`.
-
-## Security warnings for production
-
-This is a solid prototype, but before real money/data flows through it:
-
-- **Client-side authentication is not authentication.** Anything in browser JS (hardcoded passwords, `isAdmin` flags in localStorage) can be flipped in DevTools. This project keeps all verification server-side — keep it that way.
-- **Never expose API keys or secrets in frontend code.** Everything served from `public/` is readable by every visitor.
-- **Add rate limiting** (e.g. `express-rate-limit`) on `/api/auth/login` and the public form routes to blunt brute force and spam.
-- **Add CSRF protection** if you ever move beyond same-site JSON requests; `sameSite: 'lax'` cookies cover the common cases but aren't a complete defense.
-- **Consider CAPTCHA/honeypots** on public forms once the site gets traffic — bots will find the RSVP form.
-- Form data (names, emails, phones) is personal data — handle exports carefully and delete what you don't need.
+The previous Express/SQLite app and the Lovable export are preserved under `/_archive` for design
+and copy reference. They are not part of the build (`.vercelignore`, `.gitignore`). `/outsideatl`
+is an empty leftover directory locked by a running preview process — delete it once that process
+is closed.

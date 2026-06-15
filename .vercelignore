@@ -1,0 +1,5 @@
+# Keep the legacy code out of the Vercel build entirely.
+/_archive/
+/outsideatl/
+/.playwright-mcp/
+/.remember/

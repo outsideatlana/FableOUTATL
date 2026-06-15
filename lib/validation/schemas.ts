@@ -1,0 +1,89 @@
+import { z } from 'zod';
+
+/** Treat empty strings / null as "absent" for optional fields. */
+const optionalText = (max = 2000) =>
+  z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+    .refine((v) => v == null || v.length <= max, `Too long (max ${max}).`);
+
+const phone = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+  .refine(
+    (v) => v == null || /^[+]?[\d\s().-]{7,20}$/.test(v),
+    'Enter a valid phone number.',
+  );
+
+const email = z.string().trim().min(1, 'Email is required.').email('Enter a valid email.').max(254);
+const name = z.string().trim().min(1, 'Name is required.').max(120);
+
+export const rsvpSchema = z.object({
+  event_id: z
+    .union([z.string().uuid(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === '' ? null : v)),
+  name,
+  email,
+  phone,
+  instagram: optionalText(60),
+  notes: optionalText(1000),
+});
+export type RsvpInput = z.infer<typeof rsvpSchema>;
+
+export const applicationSchema = z.object({
+  type: z.enum(['intern', 'freelancer', 'vendor', 'dj']),
+  name,
+  email,
+  phone,
+  instagram: optionalText(60),
+  portfolio_url: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+    .refine(
+      (v) => v == null || /^https?:\/\/.+/.test(v),
+      'Portfolio must be a valid http(s) URL.',
+    ),
+  experience: optionalText(2000),
+  message: optionalText(2000),
+});
+export type ApplicationInput = z.infer<typeof applicationSchema>;
+
+export const interestSchema = z.object({
+  concept_name: z.string().trim().min(1, 'Concept is required.').max(120),
+  name: optionalText(120),
+  email,
+  phone,
+});
+export type InterestInput = z.infer<typeof interestSchema>;
+
+export const eventSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required.').max(160),
+  slug: optionalText(180),
+  description: optionalText(4000),
+  event_date: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim())),
+  location: optionalText(200),
+  status: z.enum(['draft', 'published', 'sold_out', 'archived']).default('draft'),
+  hero_image_url: optionalText(1000),
+});
+export type EventInput = z.infer<typeof eventSchema>;
+
+export const recapMetaSchema = z.object({
+  event_id: z
+    .union([z.string().uuid(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === '' ? null : v)),
+  caption: optionalText(280),
+  sort_order: z.coerce.number().int().min(0).max(10000).default(0),
+});
+export type RecapMetaInput = z.infer<typeof recapMetaSchema>;
+
+/** Flatten zod errors into a { field: message } map for the UI. */
+export function fieldErrors(error: z.ZodError): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = String(issue.path[0] ?? '_');
+    if (!out[key]) out[key] = issue.message;
+  }
+  return out;
+}
