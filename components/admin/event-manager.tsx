@@ -83,11 +83,11 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     const fd = new FormData();
     fd.append('file', file);
     fd.append('folder', 'events');
-    fd.append('access', 'public');
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? 'Image upload failed.');
-    return { url: body.url as string, pathname: (body.pathname as string) ?? '' };
+    // Supabase Storage route returns { url, path }.
+    return { url: body.url as string, pathname: (body.path as string) ?? '' };
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {

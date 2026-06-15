@@ -22,7 +22,8 @@ export type AirtableTableKey =
   | 'rsvps'
   | 'applications'
   | 'recaps'
-  | 'signups';
+  | 'signups'
+  | 'interest';
 
 const TABLE_ENV: Record<AirtableTableKey, string> = {
   events: 'AIRTABLE_EVENTS_TABLE',
@@ -30,6 +31,7 @@ const TABLE_ENV: Record<AirtableTableKey, string> = {
   applications: 'AIRTABLE_APPLICATIONS_TABLE',
   recaps: 'AIRTABLE_RECAPS_TABLE',
   signups: 'AIRTABLE_SIGNUPS_TABLE',
+  interest: 'AIRTABLE_INTEREST_TABLE',
 };
 
 export function tableName(key: AirtableTableKey): string | null {

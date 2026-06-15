@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/admin/rsvps', label: 'RSVPs' },
   { href: '/admin/applications', label: 'Applications' },
   { href: '/admin/recaps', label: 'Recaps' },
+  { href: '/admin/hosted', label: 'Hosted' },
 ];
 
 export function AdminNav() {

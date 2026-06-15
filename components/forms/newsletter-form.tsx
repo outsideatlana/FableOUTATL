@@ -3,8 +3,9 @@
 import { useState } from 'react';
 
 /**
- * Newsletter signup — Lovable look. Reuses the existing /api/interest
- * endpoint with a "Newsletter" concept (no backend change).
+ * Newsletter signup — posts to /api/signups (Supabase `signups` +
+ * Airtable SIGNUPS). Distinct from the "what should we throw next?" idea
+ * form, which goes to INTEREST FORMS.
  */
 export function NewsletterForm() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -18,10 +19,10 @@ export function NewsletterForm() {
     const form = e.currentTarget;
     const email = new FormData(form).get('email');
     try {
-      const res = await fetch('/api/interest', {
+      const res = await fetch('/api/signups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concept_name: 'Newsletter', email }),
+        body: JSON.stringify({ email }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {

@@ -1,6 +1,6 @@
 import 'server-only';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import type { EventRow, RecapRow } from '@/types/database';
+import type { EventRow, RecapRow, HostedRow } from '@/types/database';
 
 /**
  * Public, anon-key reads for Server Components. Every function tolerates
@@ -59,4 +59,21 @@ export async function getPublicRecaps(): Promise<RecapWithEvent[]> {
     const { events, ...rest } = r as RecapRow & { events: { title: string } | null };
     return { ...rest, event_title: events?.title ?? null };
   });
+}
+
+/** Published "Who We've Hosted" entries, ordered. Empty when unconfigured. */
+export async function getPublicHosted(): Promise<HostedRow[]> {
+  const supabase = getSupabaseServer();
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('hosted')
+    .select('*')
+    .eq('published', true)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.error('[data] getPublicHosted:', error.message);
+    return [];
+  }
+  return data ?? [];
 }

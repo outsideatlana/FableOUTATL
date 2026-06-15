@@ -1,38 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
-import {
-  uploadToBlob,
-  assertValidUpload,
-  UploadValidationError,
-  IMAGE_TYPES,
-  DOC_TYPES,
-  MAX_UPLOAD_BYTES,
-  type BlobAccess,
-  type BlobFolder,
-} from '@/lib/blob/upload';
+import { uploadImage, assertValidImage, UploadError, type UploadFolder } from '@/lib/supabase/storage';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_FOLDERS: BlobFolder[] = ['events', 'recaps', 'applications', 'articles'];
-const ALLOWED_TYPES = [...IMAGE_TYPES, ...DOC_TYPES];
+const ALLOWED_FOLDERS: UploadFolder[] = ['events', 'recaps', 'hosted'];
 
 /**
- * POST /api/upload — ADMIN ONLY. Upload one file to Vercel Blob and
- * return its URL + pathname (persist these in Supabase). Accepts
- * multipart/form-data: `file`, optional `folder`, optional `access`.
+ * POST /api/upload — ADMIN ONLY. Upload one image to Supabase Storage and
+ * return its public URL + object path. Body: multipart/form-data with
+ * `file` (or `image`) and optional `folder` (events | recaps | hosted).
+ *
+ * SECURITY: the Supabase service-role key is used only server-side here;
+ * it never reaches the browser.
  */
-export async function POST(request: NextRequest) {
-  // Auth guard — uploads to events/recaps/applications are admin-only.
+export async function POST(request: Request): Promise<NextResponse> {
   if (!(await getSession())) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
   }
 
   try {
     const form = await request.formData();
-    // Accept `file` (spec) and `image` (legacy callers) for compatibility.
     const file = form.get('file') ?? form.get('image');
-    const folder = String(form.get('folder') || 'events') as BlobFolder;
-    const accessRaw = String(form.get('access') || '');
+    const folder = String(form.get('folder') || 'events') as UploadFolder;
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Missing file upload.' }, { status: 400 });
@@ -41,40 +31,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid upload folder.' }, { status: 400 });
     }
 
-    // Default applications → private; everything else → public.
-    const access: BlobAccess =
-      accessRaw === 'public' || accessRaw === 'private'
-        ? accessRaw
-        : folder === 'applications'
-          ? 'private'
-          : 'public';
+    assertValidImage(file);
+    const { url, path } = await uploadImage(file, folder);
 
-    assertValidUpload(file, ALLOWED_TYPES, MAX_UPLOAD_BYTES);
-
-    const blob = await uploadToBlob({
-      folder,
-      filename: file.name,
-      body: file,
-      contentType: file.type,
-      access,
-    });
-
-    return NextResponse.json(
-      {
-        ok: true,
-        url: blob.url,
-        pathname: blob.pathname,
-        contentType: blob.contentType,
-        size: file.size,
-        access,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true, url, path }, { status: 201 });
   } catch (err) {
-    if (err instanceof UploadValidationError) {
+    if (err instanceof UploadError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
-    console.error('[upload] Blob upload failed:', err);
+    console.error('Supabase upload failed:', err);
     return NextResponse.json({ error: 'Upload failed.' }, { status: 500 });
   }
 }

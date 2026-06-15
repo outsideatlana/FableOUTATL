@@ -2,12 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
 import { getPublicRecaps } from '@/lib/data/public';
-import {
-  uploadToBlob,
-  assertValidUpload,
-  UploadValidationError,
-  IMAGE_TYPES,
-} from '@/lib/blob/upload';
+import { uploadImage, assertValidImage, UploadError } from '@/lib/supabase/storage';
 import { recapMetaSchema, fieldErrors } from '@/lib/validation/schemas';
 import { airtable } from '@/lib/airtable/sync';
 
@@ -19,7 +14,8 @@ export async function GET() {
   return NextResponse.json({ recaps });
 }
 
-// POST /api/recaps — admin: upload a recap photo (multipart). Image required.
+// POST /api/recaps — admin: upload a recap photo (multipart) to Supabase
+// Storage, then store the public URL + path + metadata in Supabase.
 export async function POST(request: Request) {
   if (!(await getSession())) {
     return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
@@ -45,22 +41,16 @@ export async function POST(request: Request) {
       );
     }
 
-    assertValidUpload(file, IMAGE_TYPES);
-    const blob = await uploadToBlob({
-      folder: 'recaps',
-      filename: file.name,
-      body: file,
-      contentType: file.type,
-      access: 'public',
-    });
+    assertValidImage(file);
+    const { url, path } = await uploadImage(file, 'recaps');
 
     const supabase = requireSupabaseAdmin();
     const { data: recap, error } = await supabase
       .from('recaps')
       .insert({
         event_id: parsed.data.event_id,
-        image_url: blob.url,
-        image_pathname: blob.pathname,
+        image_url: url,
+        image_pathname: path,
         caption: parsed.data.caption,
         sort_order: parsed.data.sort_order,
       })
@@ -74,7 +64,7 @@ export async function POST(request: Request) {
     await airtable.recap({ caption: recap.caption, image_url: recap.image_url });
     return NextResponse.json({ ok: true, recap }, { status: 201 });
   } catch (err) {
-    if (err instanceof UploadValidationError) {
+    if (err instanceof UploadError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error('[recaps] error:', err);

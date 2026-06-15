@@ -62,6 +62,26 @@ export interface RecapRow {
   created_at: string;
 }
 
+export interface HostedRow {
+  id: string;
+  name: string;
+  image_url: string | null;
+  image_pathname: string | null;
+  description: string | null;
+  link_url: string | null;
+  sort_order: number;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SignupRow {
+  id: string;
+  email: string;
+  phone: string | null;
+  created_at: string;
+}
+
 export interface InterestSignupRow {
   id: string;
   concept_name: string;
@@ -85,6 +105,8 @@ export interface Database {
       applications: Table<ApplicationRow>;
       recaps: Table<RecapRow>;
       interest_signups: Table<InterestSignupRow>;
+      signups: Table<SignupRow>;
+      hosted: Table<HostedRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

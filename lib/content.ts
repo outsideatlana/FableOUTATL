@@ -34,10 +34,5 @@ export const EVENT_CONCEPTS: EventConcept[] = [
   },
 ];
 
-/** Social-proof / notable artists & events hosted. */
-export const ARTIST_PROOF: { name: string; note: string }[] = [
-  { name: 'Local Headliners', note: 'ATL DJs & producers' },
-  { name: 'Sold-Out Rooftops', note: 'Midtown / O4W' },
-  { name: 'Campus Tours', note: 'AUC & beyond' },
-  { name: 'Vendor Markets', note: '50+ local makers' },
-];
+// "Who We've Hosted" is admin-managed and loaded from Supabase
+// (see components/home/WhoWeveHosted.tsx). No hardcoded/fake entries.

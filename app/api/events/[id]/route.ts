@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
 import { eventSchema, fieldErrors } from '@/lib/validation/schemas';
-import { deleteFromBlob } from '@/lib/blob/upload';
+import { deleteImage } from '@/lib/supabase/storage';
 import { slugify } from '@/lib/utils';
 
 type Params = { params: Promise<{ id: string }> };
@@ -74,8 +74,8 @@ export async function DELETE(_request: Request, { params }: Params) {
       console.error('[events] delete:', error.message);
       return NextResponse.json({ error: 'Could not delete the event.' }, { status: 500 });
     }
-    // Clean up the hero image blob (best-effort).
-    await deleteFromBlob(existing?.hero_image_pathname || existing?.hero_image_url);
+    // Clean up the hero image in Supabase Storage (best-effort).
+    await deleteImage(existing?.hero_image_pathname || existing?.hero_image_url);
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (err) {
     console.error('[events] delete error:', err);
