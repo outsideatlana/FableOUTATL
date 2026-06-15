@@ -58,12 +58,23 @@ export const airtable = {
       Message: a.message ?? '',
     }),
 
-  interest: (s: { concept_name: string; name?: string | null; email: string; phone?: string | null }) =>
+  interest: (s: {
+    concept_name: string;
+    name?: string | null;
+    email: string;
+    phone?: string | null;
+    instagram?: string | null;
+    idea_description?: string | null;
+    preferred_vibe?: string | null;
+  }) =>
     syncRecord('signups', {
       Concept: s.concept_name,
       Name: s.name ?? '',
       Email: s.email,
       Phone: s.phone ?? '',
+      Instagram: s.instagram ?? '',
+      Idea: s.idea_description ?? '',
+      Vibe: s.preferred_vibe ?? '',
     }),
 
   event: (e: { title: string; slug: string; event_date?: string | null; location?: string | null; status: string; hero_image_url?: string | null }) =>

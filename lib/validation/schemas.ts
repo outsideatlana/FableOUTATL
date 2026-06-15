@@ -48,11 +48,19 @@ export const applicationSchema = z.object({
 });
 export type ApplicationInput = z.infer<typeof applicationSchema>;
 
+/**
+ * "What should we throw next?" idea form. `concept_name` is kept (NOT NULL
+ * in the table) and derived from the idea title server-side.
+ */
 export const interestSchema = z.object({
-  concept_name: z.string().trim().min(1, 'Concept is required.').max(120),
-  name: optionalText(120),
+  name,
   email,
   phone,
+  instagram: optionalText(60),
+  idea_title: z.string().trim().min(1, 'Tell us your event idea.').max(160),
+  idea_description: optionalText(2000),
+  preferred_vibe: optionalText(120),
+  consent: z.boolean().refine((v) => v === true, 'Please confirm you consent to be contacted.'),
 });
 export type InterestInput = z.infer<typeof interestSchema>;
 
@@ -66,8 +74,23 @@ export const eventSchema = z.object({
   location: optionalText(200),
   status: z.enum(['draft', 'published', 'sold_out', 'archived']).default('draft'),
   hero_image_url: optionalText(1000),
+  hero_image_pathname: optionalText(1000),
+  flyer_image_url: optionalText(1000),
+  flyer_image_pathname: optionalText(1000),
 });
 export type EventInput = z.infer<typeof eventSchema>;
+
+/** Recap create payload (JSON) — image already uploaded to Blob client-side. */
+export const recapCreateSchema = z.object({
+  image_url: z.string().url('A recap image is required.').max(1000),
+  image_pathname: optionalText(1000),
+  event_id: z
+    .union([z.string().uuid(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === '' ? null : v)),
+  caption: optionalText(280),
+  sort_order: z.coerce.number().int().min(0).max(10000).default(0),
+});
+export type RecapCreateInput = z.infer<typeof recapCreateSchema>;
 
 export const recapMetaSchema = z.object({
   event_id: z

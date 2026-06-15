@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { AdminRecap } from '@/lib/data/admin';
 import { Field, Input, Select } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
+import { uploadImageToBlob } from '@/lib/blob/client';
 
 interface EventOption {
   id: string;
@@ -33,19 +34,41 @@ export function RecapManager({
     setStatus('');
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const file = fd.get('image');
+    const caption = String(fd.get('caption') || '');
+    const event_id = String(fd.get('event_id') || '');
     try {
-      const res = await fetch('/api/recaps', { method: 'POST', body: fd });
+      if (!(file instanceof File) || file.size === 0) {
+        setErrors({ image: 'Choose an image to upload.' });
+        setStatus('An image is required.');
+        return;
+      }
+      // 1) Upload the image to Vercel Blob (client → /api/upload server upload).
+      const blob = await uploadImageToBlob({ file, folder: 'recaps' });
+      // 2) Save recap metadata (with the blob url + pathname) to Supabase.
+      const res = await fetch('/api/recaps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: blob.url,
+          image_pathname: blob.pathname,
+          caption,
+          event_id: event_id || null,
+          sort_order: initialRecaps.length,
+        }),
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErrors(body.fields ?? {});
-        setStatus(body.error ?? 'Could not upload.');
+        setStatus(body.error ?? 'Could not save the recap.');
         return;
       }
       form.reset();
       setPreview('');
       router.refresh();
-    } catch {
-      setStatus('Network error. Try again.');
+    } catch (err) {
+      // Validation errors from the upload helper (type / 4.5MB) land here.
+      setStatus(err instanceof Error ? err.message : 'Network error. Try again.');
     } finally {
       setBusy(false);
     }
@@ -86,12 +109,12 @@ export function RecapManager({
         <p className="mono-label">[ New Recap Photo ]</p>
         <h2 className="mb-4 mt-1 font-display text-2xl uppercase">Upload Recap</h2>
         <form onSubmit={onUpload} className="space-y-4" noValidate>
-          <Field label="Photo" htmlFor="rc-img" hint="Required · JPG, PNG, WEBP · max 5MB" error={errors.image}>
+          <Field label="Photo" htmlFor="rc-img" hint="Required · JPG, PNG, WEBP, GIF · max 4.5MB" error={errors.image}>
             <input
               id="rc-img"
               name="image"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 setPreview(f ? URL.createObjectURL(f) : '');

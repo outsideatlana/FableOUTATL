@@ -6,6 +6,12 @@ const nextConfig = {
     // The hostname is read from the public Supabase URL when present.
     remotePatterns: [
       {
+        // Vercel Blob public store (event hero/flyer images, recap photos).
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      },
+      {
+        // Legacy: any images still served from Supabase Storage.
         protocol: 'https',
         hostname: '*.supabase.co',
         pathname: '/storage/v1/object/public/**',

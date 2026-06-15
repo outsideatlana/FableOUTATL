@@ -10,6 +10,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/field';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatEventDate } from '@/lib/utils';
+import { uploadImageToBlob } from '@/lib/blob/client';
 
 const STATUSES: EventStatus[] = ['draft', 'published', 'sold_out', 'archived'];
 
@@ -22,6 +23,7 @@ const EMPTY = {
   description: '',
   status: 'draft' as EventStatus,
   hero_image_url: '',
+  hero_image_pathname: '',
 };
 
 /** ISO timestamp -> value for <input type="datetime-local">. */
@@ -62,6 +64,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
       description: ev.description ?? '',
       status: ev.status,
       hero_image_url: ev.hero_image_url ?? '',
+      hero_image_pathname: ev.hero_image_pathname ?? '',
     });
     setFile(null);
     setPreview(ev.hero_image_url ?? '');
@@ -76,15 +79,11 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     setPreview(f ? URL.createObjectURL(f) : form.hero_image_url);
   }
 
-  async function uploadHero(): Promise<string> {
-    if (!file) return form.hero_image_url;
-    const fd = new FormData();
-    fd.append('image', file);
-    fd.append('folder', 'events');
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error ?? 'Image upload failed.');
-    return body.url as string;
+  // Upload via the Vercel Blob server-upload route; returns url + pathname.
+  async function uploadHero(): Promise<{ url: string; pathname: string }> {
+    if (!file) return { url: form.hero_image_url, pathname: form.hero_image_pathname };
+    const blob = await uploadImageToBlob({ file, folder: 'events' });
+    return { url: blob.url, pathname: blob.pathname };
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -94,7 +93,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
     setErrors({});
     setStatus('');
     try {
-      const hero_image_url = await uploadHero();
+      const { url: hero_image_url, pathname: hero_image_pathname } = await uploadHero();
       const payload = {
         title: form.title,
         slug: form.slug || undefined,
@@ -103,6 +102,7 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
         description: form.description,
         status: form.status,
         hero_image_url,
+        hero_image_pathname,
       };
       const res = await fetch(editing ? `/api/events/${form.id}` : '/api/events', {
         method: editing ? 'PATCH' : 'POST',
@@ -136,6 +136,9 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
         description: ev.description,
         status: next,
         hero_image_url: ev.hero_image_url,
+        hero_image_pathname: ev.hero_image_pathname,
+        flyer_image_url: ev.flyer_image_url,
+        flyer_image_pathname: ev.flyer_image_pathname,
       }),
     });
     router.refresh();
@@ -181,8 +184,8 @@ export function EventManager({ initialEvents }: { initialEvents: AdminEvent[] })
           <Field label="Description" htmlFor="ev-desc" error={errors.description}>
             <Textarea id="ev-desc" rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
-          <Field label="Hero Image" htmlFor="ev-img" hint="JPG, PNG, or WEBP · max 5MB" error={errors.hero_image_url}>
-            <input id="ev-img" type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="field-input cursor-pointer file:mr-3 file:border file:border-line file:bg-transparent file:px-3 file:py-1 file:font-mono file:text-[0.6rem] file:uppercase file:text-white" />
+          <Field label="Hero Image" htmlFor="ev-img" hint="JPG, PNG, WEBP, or GIF · max 4.5MB" error={errors.hero_image_url}>
+            <input id="ev-img" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={onFile} className="field-input cursor-pointer file:mr-3 file:border file:border-line file:bg-transparent file:px-3 file:py-1 file:font-mono file:text-[0.6rem] file:uppercase file:text-white" />
           </Field>
           {preview && (
             <div className="relative aspect-video overflow-hidden border border-line">

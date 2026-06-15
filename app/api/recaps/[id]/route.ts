@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
-import { deleteImageByUrl } from '@/lib/supabase/storage';
+import { deleteFromBlob } from '@/lib/blob/upload';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -53,7 +53,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     const supabase = requireSupabaseAdmin();
     const { data: existing } = await supabase
       .from('recaps')
-      .select('image_url')
+      .select('image_url, image_pathname')
       .eq('id', id)
       .maybeSingle();
 
@@ -62,7 +62,7 @@ export async function DELETE(_request: Request, { params }: Params) {
       console.error('[recaps] delete:', error.message);
       return NextResponse.json({ error: 'Could not delete the recap.' }, { status: 500 });
     }
-    if (existing?.image_url) await deleteImageByUrl(existing.image_url);
+    await deleteFromBlob(existing?.image_pathname || existing?.image_url);
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (err) {
     console.error('[recaps] delete error:', err);
