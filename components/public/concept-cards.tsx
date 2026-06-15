@@ -3,29 +3,31 @@
 import { useState } from 'react';
 import type { EventConcept } from '@/types/events';
 import { InterestForm } from '@/components/forms/interest-form';
-import { cn } from '@/lib/utils';
 
+/**
+ * "Gauge My Interest" concept cards — PRESERVED content + logic. Each card
+ * reveals the interest form (posts to /api/interest). Restyled to Lovable.
+ */
 export function ConceptCards({ concepts }: { concepts: EventConcept[] }) {
   const [active, setActive] = useState<string | null>(null);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {concepts.map((c, i) => {
         const isOpen = active === c.name;
         return (
           <div
             key={c.name}
-            className={cn(
-              'border bg-ink-800 p-6 transition-colors',
-              isOpen ? 'border-electric/50' : 'border-line hover:border-white/30',
-            )}
+            className={`border p-8 transition-colors ${
+              isOpen ? 'border-accent/60 bg-accent/10' : 'border-border hover:border-accent'
+            }`}
           >
-            <span className="mono-label">[ {String(i + 1).padStart(2, '0')} ]</span>
-            <h3 className="mt-3 font-display text-2xl uppercase tracking-tight">{c.name}</h3>
-            <p className="mt-1 font-mono text-[0.7rem] uppercase tracking-[0.15em] text-hot-400">
-              {c.tagline}
-            </p>
-            <p className="mt-3 text-sm text-muted">{c.description}</p>
+            <span className="mb-6 block font-mono text-xs uppercase text-red-600">
+              [ {String(i + 1).padStart(2, '0')} ]
+            </span>
+            <h4 className="font-display text-3xl uppercase tracking-tight">{c.name}</h4>
+            <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-red-600">{c.tagline}</p>
+            <p className="mt-3 text-sm text-muted-foreground">{c.description}</p>
 
             {isOpen ? (
               <InterestForm concept={c.name} />
@@ -33,9 +35,9 @@ export function ConceptCards({ concepts }: { concepts: EventConcept[] }) {
               <button
                 type="button"
                 onClick={() => setActive(c.name)}
-                className="mt-4 font-mono text-xs uppercase tracking-[0.15em] text-electric-400 hover:text-white"
+                className="mt-6 font-bold uppercase tracking-widest text-xs transition-colors hover:text-accent"
               >
-                Gauge my interest →
+                Gauge My Interest →
               </button>
             )}
           </div>

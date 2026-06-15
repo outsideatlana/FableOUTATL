@@ -1,79 +1,30 @@
-'use client';
-
 import Link from 'next/link';
-import { useState } from 'react';
-import { cn } from '@/lib/utils';
 
-const LINKS = [
-  { href: '/events', label: 'Events' },
-  { href: '/apply/intern', label: 'Work With Us' },
-  { href: '/dj', label: 'DJ Submit' },
-  { href: '/#contact', label: 'Contact' },
-];
-
+/**
+ * Top navigation — ported from the Lovable design: sticky, blurred,
+ * mono uppercase links, blue RSVP button. (Wordmark instead of the
+ * Lovable logo asset; "Atl" picks up the red brand highlight.)
+ */
 export function SiteNav() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-ink/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <Link href="/" className="font-display text-2xl uppercase tracking-tight">
-          Outside<span className="text-hot">Atl</span>
+    <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-background/80 px-6 py-4 backdrop-blur-md">
+      <Link href="/" aria-label="OutsideAtl home" className="font-display text-2xl uppercase tracking-tight">
+        Outside<span className="text-red-600">Atl</span>
+      </Link>
+
+      <div className="hidden items-center gap-8 font-mono text-[10px] uppercase tracking-widest md:flex">
+        <Link href="/#events" className="transition-colors hover:text-accent">Events</Link>
+        <Link href="/#apply" className="transition-colors hover:text-accent">Work With Us</Link>
+        <Link href="/dj" className="transition-colors hover:text-accent">DJ Submit</Link>
+        <Link href="/#contact" className="transition-colors hover:text-accent">Contact</Link>
+        <Link href="/#rsvp" className="bg-accent px-3 py-2 font-bold text-accent-foreground transition-transform hover:scale-105">
+          RSVP
         </Link>
-
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Main">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className="font-mono text-xs uppercase tracking-[0.15em] text-muted transition-colors hover:text-white"
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="hidden md:block">
-          <Link
-            href="/events"
-            className="bg-hot px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-hot-700"
-          >
-            RSVP
-          </Link>
-        </div>
-
-        <button
-          type="button"
-          className="flex h-9 w-9 items-center justify-center text-white md:hidden"
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span className="font-mono text-lg">{open ? '✕' : '≡'}</span>
-        </button>
       </div>
 
-      <div className={cn('border-t border-line md:hidden', open ? 'block' : 'hidden')}>
-        <nav className="flex flex-col px-5 py-3" aria-label="Mobile">
-          {LINKS.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="py-3 font-mono text-sm uppercase tracking-[0.15em] text-muted hover:text-white"
-            >
-              {l.label}
-            </Link>
-          ))}
-          <Link
-            href="/events"
-            onClick={() => setOpen(false)}
-            className="mt-2 bg-hot px-5 py-3 text-center font-mono text-sm font-semibold uppercase tracking-[0.15em] text-white"
-          >
-            RSVP
-          </Link>
-        </nav>
-      </div>
-    </header>
+      <Link href="/#rsvp" className="bg-accent px-3 py-2 font-mono text-[10px] font-bold uppercase text-accent-foreground md:hidden">
+        RSVP
+      </Link>
+    </nav>
   );
 }
