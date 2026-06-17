@@ -2,17 +2,11 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { roleApplicationSchema, fieldErrors } from '@/lib/validation/schemas';
-import {
-  submitRoleApplication,
-  isAirtableConfigured,
-  type AirtableTableKey,
-} from '@/lib/airtable/client';
+import { submitRoleApplication, isAirtableConfigured } from '@/lib/airtable/client';
+import type { FormKey } from '@/lib/airtable/form-field-maps';
 import type { ApplicationType } from '@/types/database';
 
-type RoleKey = Extract<
-  AirtableTableKey,
-  'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'
->;
+type RoleKey = Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'>;
 
 /**
  * Builds a POST handler for a role-specific application form. The form's

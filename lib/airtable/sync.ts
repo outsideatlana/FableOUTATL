@@ -1,5 +1,5 @@
 import 'server-only';
-import { createAirtableRecord, isAirtableEnabled, note } from './client';
+import { createMirrorRecord, isAirtableEnabled, note } from './client';
 
 /**
  * OPTIONAL mirrors of admin-managed Supabase records (Events, Recaps) into
@@ -8,17 +8,17 @@ import { createAirtableRecord, isAirtableEnabled, note } from './client';
  *
  * Site FORM submissions do NOT live here — they go straight to their Airtable
  * table via lib/airtable/client.ts (submitRsvp, submitSignup, submitInterest,
- * submitApplication, submitRoleApplication).
+ * submitApplication, submitRoleApplication), mapped by form-field-maps.ts.
  *
  * SECURITY: server-only; AIRTABLE_API_KEY never reaches the browser.
  */
 async function mirror(
-  key: Parameters<typeof createAirtableRecord>[0],
+  key: Parameters<typeof createMirrorRecord>[0],
   fields: Record<string, unknown>,
 ): Promise<void> {
   try {
     if (!isAirtableEnabled()) return;
-    await createAirtableRecord(key, fields);
+    await createMirrorRecord(key, fields);
   } catch (err) {
     console.error(
       `[airtable] mirror "${key}" failed (Supabase remains source of truth):`,

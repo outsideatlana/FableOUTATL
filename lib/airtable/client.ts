@@ -1,83 +1,41 @@
 import 'server-only';
+import { AIRTABLE_FORM_MAPS, type FormFieldMap, type FormKey } from './form-field-maps';
 
 /**
  * Centralized, SERVER-ONLY Airtable client for every site form.
  *
- * All form submissions go to Airtable via the REST API using the pattern:
+ * Records are built from lib/airtable/form-field-maps.ts (the single source of
+ * truth for table + exact column names) and written via the REST API:
  *   https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(table)}
  *
- * `table` is resolved per form from env (e.g. AIRTABLE_INTEREST_TABLE) and
- * falls back to the real table ID from the base (appfq5XK6vJpwDCyg). Falling
- * back to the stable table ID means a missing/mis-cased env value can never
- * reproduce the "INTEREST FORMS table is not configured" error again.
- *
  * SECURITY: `import 'server-only'` guarantees AIRTABLE_API_KEY never reaches
- * the browser. Forms only ever call the /api/* routes that use this module —
- * never Airtable directly from client components.
- *
- * FIELD NAMES: every field key below matches a real column in the base
- * (inspected live). Inputs without a dedicated column are folded into each
- * table's notes/multiline column — no field names are invented.
+ * the browser. Forms only ever call same-origin /api routes that use this
+ * module — never Airtable directly. Errors name the table (and Airtable's
+ * field-level detail) but never include the API key.
  */
 
 const AIRTABLE_BASE_DEFAULT = 'appfq5XK6vJpwDCyg';
 
-export type AirtableTableKey =
-  | 'rsvps'
-  | 'signups'
-  | 'applications'
-  | 'events'
-  | 'recaps'
-  | 'interest'
-  | 'interns'
-  | 'vendors'
-  | 'dj'
-  | 'sponsors'
-  | 'freelance';
-
-/**
- * Registry of every table this app writes to. `id` is the real Airtable table
- * id (casing-proof default); `name` is the human table name; `env` overrides
- * the identifier used in the URL when set.
- */
-const TABLES: Record<AirtableTableKey, { id: string; name: string; env: string }> = {
-  rsvps:        { id: 'tblMsYOvmcZ3GkxAU', name: 'RSVPs',          env: 'AIRTABLE_RSVP_TABLE' },
-  signups:      { id: 'tblHVZAqfwVeiI9NE', name: 'Signups',        env: 'AIRTABLE_SIGNUPS_TABLE' },
-  applications: { id: 'tbl2r0WCwcH9H6zxJ', name: 'Applications',   env: 'AIRTABLE_APPLICATIONS_TABLE' },
-  events:       { id: 'tblrEbVytWDdOSDIL', name: 'Events',         env: 'AIRTABLE_EVENTS_TABLE' },
-  recaps:       { id: 'tblNoY2A79WImyoab', name: 'Recaps',         env: 'AIRTABLE_RECAPS_TABLE' },
-  interest:     { id: 'tblxF8FH9U0tANlUu', name: 'Interest Forms', env: 'AIRTABLE_INTEREST_TABLE' },
-  interns:      { id: 'tbl3zQWwu4kUxw95E', name: 'Interns',        env: 'AIRTABLE_INTERNS_TABLE' },
-  vendors:      { id: 'tblHwCW43Nzf0iNHi', name: 'Vendors',        env: 'AIRTABLE_VENDORS_TABLE' },
-  dj:           { id: 'tblBQJ9lOtCFzlLu0', name: 'Dj',             env: 'AIRTABLE_DJ_TABLE' },
-  sponsors:     { id: 'tbl76EBA5bnLJGswo', name: 'Sponsors',       env: 'AIRTABLE_SPONSORS_TABLE' },
-  freelance:    { id: 'tblgJlCIUCwCDlZIO', name: 'Freelance',      env: 'AIRTABLE_FREELANCE_TABLE' },
-};
+/** Optional admin mirror tables (Supabase is their source of truth). */
+const MIRROR_TABLES = {
+  events: { id: 'tblrEbVytWDdOSDIL', name: 'Events', env: 'AIRTABLE_EVENTS_TABLE' },
+  recaps: { id: 'tblNoY2A79WImyoab', name: 'Recaps', env: 'AIRTABLE_RECAPS_TABLE' },
+} as const;
+export type MirrorKey = keyof typeof MIRROR_TABLES;
 
 function baseId(): string {
   return process.env.AIRTABLE_BASE_ID || AIRTABLE_BASE_DEFAULT;
 }
 
-/** Identifier placed in the REST URL: env override (name) or the real table id. */
-function tableRef(key: AirtableTableKey): string {
-  const override = process.env[TABLES[key].env]?.trim();
-  return override && override.length > 0 ? override : TABLES[key].id;
-}
-
-/** Human-facing table name (used in error messages / docs). */
-export function tableName(key: AirtableTableKey): string {
-  return TABLES[key].name;
-}
-
 /**
- * True when an API key is present. The base id always resolves (env or the
- * known default), so configuration hinges only on the secret API key.
+ * True when an API key is present. The base id and every table identifier
+ * resolve from defaults, so configuration hinges only on the secret API key.
  */
 export function isAirtableConfigured(): boolean {
   return Boolean(process.env.AIRTABLE_API_KEY);
 }
 
-/** ENABLE_AIRTABLE_SYNC gates the OPTIONAL mirroring of admin events/recaps. */
+/** ENABLE_AIRTABLE_SYNC gates only the OPTIONAL admin events/recaps mirror. */
 export function isAirtableEnabled(): boolean {
   return (
     String(process.env.ENABLE_AIRTABLE_SYNC).toLowerCase() === 'true' &&
@@ -93,56 +51,76 @@ export function note(parts: Array<[string, unknown]>): string {
     .join('\n');
 }
 
+/** Resolve a form's table identifier: env override (exact name or id) → table id. */
+function formTableRef(key: FormKey): string {
+  const m = AIRTABLE_FORM_MAPS[key];
+  return process.env[m.tableEnv]?.trim() || m.tableId;
+}
+
+/** Resolve a mirror table identifier. */
+function mirrorTableRef(key: MirrorKey): string {
+  const m = MIRROR_TABLES[key];
+  return process.env[m.env]?.trim() || m.id;
+}
+
 /**
- * Create one record in an Airtable table via the REST API. Throws on any
- * non-2xx response so callers can decide whether the failure is fatal
- * (primary-store forms) or should be swallowed (optional mirrors).
+ * Low-level: create one record in a table (by name or id). Throws on any
+ * non-2xx, with a message that names the table + Airtable's response detail
+ * (which fields/values it rejected) — never the API key.
  */
-export async function createAirtableRecord(
-  key: AirtableTableKey,
+async function createRecord(
+  ref: string,
+  label: string,
   fields: Record<string, unknown>,
 ): Promise<void> {
   const apiKey = process.env.AIRTABLE_API_KEY;
-  if (!apiKey) {
-    throw new Error('AIRTABLE_API_KEY is not configured.');
-  }
+  if (!apiKey) throw new Error('AIRTABLE_API_KEY is not configured.');
 
-  // Drop empty values so we never overwrite/clear columns with blanks.
-  const clean: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(fields)) {
-    if (v != null && !(typeof v === 'string' && v.trim() === '')) clean[k] = v;
-  }
-
-  const url = `https://api.airtable.com/v0/${baseId()}/${encodeURIComponent(tableRef(key))}`;
+  const url = `https://api.airtable.com/v0/${baseId()}/${encodeURIComponent(ref)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ records: [{ fields: clean }], typecast: true }),
+    body: JSON.stringify({ records: [{ fields }], typecast: true }),
     cache: 'no-store',
   });
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(
-      `Airtable write to "${tableName(key)}" failed (${res.status}): ${detail.slice(0, 300)}`,
-    );
+    throw new Error(`Airtable write to "${label}" failed (${res.status}): ${detail.slice(0, 400)}`);
   }
 }
 
-/** Phone numbers as digits-only (the RSVPs "Phone Number" column is numeric). */
-function phoneDigits(phone?: string | null): number | undefined {
-  if (!phone) return undefined;
-  const digits = phone.replace(/\D/g, '');
-  return digits ? Number(digits) : undefined;
+/** Build the exact Airtable field payload for a form from its map + input values. */
+function buildFields(key: FormKey, values: Record<string, unknown>): Record<string, unknown> {
+  const map: FormFieldMap = AIRTABLE_FORM_MAPS[key];
+  const out: Record<string, unknown> = {};
+  const has = (v: unknown) => v != null && !(typeof v === 'string' && v.trim() === '');
+
+  // Primary column mirrors one logical input.
+  if (has(values[map.primary.from])) out[map.primary.field] = values[map.primary.from];
+
+  // Each mapped input → its exact Airtable column (empty values omitted, so we
+  // never blank a column and only ever submit fields that exist in the table).
+  for (const [logicalKey, column] of Object.entries(map.fields)) {
+    if (has(values[logicalKey])) out[column] = values[logicalKey];
+  }
+
+  if (map.constants) Object.assign(out, map.constants);
+  return out;
+}
+
+/** Generic form submit: map + build + write. */
+async function submitForm(key: FormKey, values: Record<string, unknown>): Promise<void> {
+  const map: FormFieldMap = AIRTABLE_FORM_MAPS[key];
+  await createRecord(formTableRef(key), map.table, buildFields(key, values));
 }
 
 // ───────────────────────── Per-form submissions ─────────────────────────
-// Each maps the form's inputs onto the matching table's REAL columns.
 
-/** RSVP form → RSVPs. Columns: Name, Attendee Name, Attendee Email, Phone Number, Notes. */
+/** RSVP form → RSVPs. */
 export function submitRsvp(r: {
   name: string;
   email: string;
@@ -151,34 +129,22 @@ export function submitRsvp(r: {
   notes?: string | null;
   event_title?: string | null;
 }): Promise<void> {
-  return createAirtableRecord('rsvps', {
-    Name: r.name,
-    'Attendee Name': r.name,
-    'Attendee Email': r.email,
-    'Phone Number': phoneDigits(r.phone),
-    Notes: note([
-      ['Event', r.event_title],
-      ['Instagram', r.instagram],
-      ['Notes', r.notes],
-    ]),
+  return submitForm('rsvp', {
+    name: r.name,
+    email: r.email,
+    phone: r.phone,
+    instagram: r.instagram,
+    event: r.event_title,
+    notes: r.notes,
   });
 }
 
-/** Newsletter / join-the-list form → Signups. Columns: Name, Attendee Email, Source. */
+/** Newsletter / join-the-list form → Signups. */
 export function submitSignup(s: { email: string }): Promise<void> {
-  return createAirtableRecord('signups', {
-    Name: s.email,
-    'Attendee Name': s.email,
-    'Attendee Email': s.email,
-    Source: 'Website',
-  });
+  return submitForm('signup', { email: s.email });
 }
 
-/**
- * Gauge My Interest / "What should we throw next?" → Interest Forms.
- * Columns: Name, Attendee Name, Attendee Email, Suggested Event/Activity,
- * Reason for Suggestion, Source.
- */
+/** Gauge My Interest / "What should we throw next?" → Interest Forms. */
 export function submitInterest(s: {
   name: string;
   email: string;
@@ -189,19 +155,15 @@ export function submitInterest(s: {
   preferred_vibe?: string | null;
   consent?: boolean;
 }): Promise<void> {
-  return createAirtableRecord('interest', {
-    Name: s.name,
-    'Attendee Name': s.name,
-    'Attendee Email': s.email,
-    'Suggested Event/Activity': s.idea_title,
-    'Reason for Suggestion': note([
-      ['Idea', s.idea_description],
-      ['Preferred vibe/day', s.preferred_vibe],
-      ['Phone', s.phone],
-      ['Instagram', s.instagram],
-      ['Consent to be contacted', s.consent ? 'Yes' : 'No'],
-    ]),
-    Source: 'Website',
+  return submitForm('interest', {
+    name: s.name,
+    email: s.email,
+    phone: s.phone,
+    instagram: s.instagram,
+    ideaTitle: s.idea_title,
+    description: s.idea_description,
+    preferredVibe: s.preferred_vibe,
+    consent: s.consent ? 'Yes' : 'No', // "Consent To Contact" is a singleSelect
   });
 }
 
@@ -215,41 +177,37 @@ export interface ApplicationFields {
   message?: string | null;
 }
 
-/** General application fallback → Applications. Columns: Name, Applicant Name, Applicant Email, Role, Application Notes. */
+/** General application fallback → Applications. */
 export function submitApplication(a: ApplicationFields & { role?: string | null }): Promise<void> {
-  return createAirtableRecord('applications', {
-    Name: a.name,
-    'Applicant Name': a.name,
-    'Applicant Email': a.email,
-    Role: a.role ?? undefined,
-    'Application Notes': note([
-      ['Phone', a.phone],
-      ['Instagram', a.instagram],
-      ['Portfolio', a.portfolio_url],
-      ['Experience', a.experience],
-      ['Message', a.message],
-    ]),
+  return submitForm('application', {
+    name: a.name,
+    email: a.email,
+    role: a.role,
+    phone: a.phone,
+    instagram: a.instagram,
+    portfolio: a.portfolio_url,
+    experience: a.experience,
+    message: a.message,
   });
 }
 
-/**
- * Role-specific application → Interns / Vendors / Dj / Sponsors / Freelance.
- * These tables only have Name + Notes (+ Status/Assignee/Attachments), so all
- * applicant detail folds into the real Notes column.
- */
+/** Role-specific application → Interns / Vendors / Dj / Sponsors / Freelance. */
 export function submitRoleApplication(
-  key: Extract<AirtableTableKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'>,
+  key: Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'>,
   a: ApplicationFields,
 ): Promise<void> {
-  return createAirtableRecord(key, {
-    Name: a.name,
-    Notes: note([
-      ['Email', a.email],
-      ['Phone', a.phone],
-      ['Instagram', a.instagram],
-      ['Portfolio', a.portfolio_url],
-      ['Experience', a.experience],
-      ['Message', a.message],
-    ]),
+  return submitForm(key, {
+    name: a.name,
+    email: a.email,
+    phone: a.phone,
+    instagram: a.instagram,
+    portfolio: a.portfolio_url,
+    experience: a.experience,
+    message: a.message,
   });
+}
+
+/** Optional admin mirror (Events / Recaps). Throws on failure; caller swallows. */
+export function createMirrorRecord(key: MirrorKey, fields: Record<string, unknown>): Promise<void> {
+  return createRecord(mirrorTableRef(key), MIRROR_TABLES[key].name, fields);
 }
