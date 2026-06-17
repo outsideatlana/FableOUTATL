@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { rsvpSchema, fieldErrors } from '@/lib/validation/schemas';
-import { airtable } from '@/lib/airtable/sync';
+import { submitRsvp, isAirtableConfigured } from '@/lib/airtable/client';
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +46,16 @@ export async function POST(request: Request) {
         .maybeSingle();
       eventTitle = ev?.title ?? null;
     }
-    await airtable.rsvp({ ...data, event_title: eventTitle });
+
+    // Form submission → Airtable RSVPs. Supabase above is the source of truth
+    // for the admin dashboard; an Airtable hiccup must not lose the RSVP.
+    if (isAirtableConfigured()) {
+      try {
+        await submitRsvp({ ...data, event_title: eventTitle });
+      } catch (err) {
+        console.error('[rsvp] airtable submit failed (saved in Supabase):', err);
+      }
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

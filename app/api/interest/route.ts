@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { interestSchema, fieldErrors } from '@/lib/validation/schemas';
-import { isAirtableConfigured } from '@/lib/airtable/client';
-import { submitInterest } from '@/lib/airtable/sync';
+import { isAirtableConfigured, submitInterest } from '@/lib/airtable/client';
 
 /**
  * POST /api/interest — public "What should we throw next?" idea form.

@@ -49,6 +49,14 @@ export const applicationSchema = z.object({
 export type ApplicationInput = z.infer<typeof applicationSchema>;
 
 /**
+ * Role-specific application form (interns / vendors / dj / sponsors /
+ * freelance). Same inputs as the general application minus `type` — the
+ * destination table is decided by the route, not the client.
+ */
+export const roleApplicationSchema = applicationSchema.omit({ type: true });
+export type RoleApplicationInput = z.infer<typeof roleApplicationSchema>;
+
+/**
  * "What should we throw next?" idea form → Airtable INTEREST FORMS only
  * (never Supabase). Required: name, email, idea title, idea description.
  */

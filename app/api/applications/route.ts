@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { applicationSchema, fieldErrors } from '@/lib/validation/schemas';
-import { airtable } from '@/lib/airtable/sync';
+import { submitApplication, isAirtableConfigured } from '@/lib/airtable/client';
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +38,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not submit your application. Try again.' }, { status: 500 });
     }
 
-    await airtable.application(data);
+    // General application fallback → Airtable Applications (Supabase above is
+    // the admin source of truth; an Airtable hiccup must not lose the record).
+    if (isAirtableConfigured()) {
+      try {
+        await submitApplication({ ...data, role: data.type });
+      } catch (err) {
+        console.error('[applications] airtable submit failed (saved in Supabase):', err);
+      }
+    }
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
     console.error('[applications] error:', err);

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { signupSchema, fieldErrors } from '@/lib/validation/schemas';
-import { airtable } from '@/lib/airtable/sync';
+import { submitSignup, isAirtableConfigured } from '@/lib/airtable/client';
 
 /**
- * POST /api/signups — public newsletter / signup form. Saves to Supabase
- * `signups` (source of truth), then optionally mirrors to Airtable SIGNUPS.
+ * POST /api/signups — public newsletter / join-the-list form. Saves to
+ * Supabase `signups` (source of truth for admin), then submits to Airtable
+ * Signups. Shared Airtable logic lives in lib/airtable/client.ts.
  */
 export async function POST(request: Request) {
   try {
@@ -33,7 +34,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not save your signup. Try again.' }, { status: 500 });
     }
 
-    await airtable.signup({ email: data.email, phone: data.phone });
+    if (isAirtableConfigured()) {
+      try {
+        await submitSignup({ email: data.email });
+      } catch (err) {
+        console.error('[signups] airtable submit failed (saved in Supabase):', err);
+      }
+    }
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
     console.error('[signups] error:', err);
