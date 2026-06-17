@@ -52,9 +52,15 @@ export async function getAdminEvents(): Promise<AdminEvent[]> {
     console.error('[admin-data] events:', error.message);
     return [];
   }
-  const { data: rsvps } = await supabase.from('rsvps').select('event_id');
+  // Count only VISIBLE RSVPs — same hidden-list (local Supabase row id)
+  // exclusion used by getAdminRsvps, so per-event counts stay in sync.
+  const [{ data: rsvps }, hidden] = await Promise.all([
+    supabase.from('rsvps').select('id, event_id'),
+    getHiddenRecordIds('rsvps'),
+  ]);
   const counts = new Map<string, number>();
   for (const r of rsvps ?? []) {
+    if (hidden.has(r.id)) continue;
     if (r.event_id) counts.set(r.event_id, (counts.get(r.event_id) ?? 0) + 1);
   }
   return (events ?? []).map((e) => ({ ...e, rsvp_count: counts.get(e.id) ?? 0 }));
