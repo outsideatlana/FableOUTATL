@@ -107,21 +107,6 @@ export const airtable = {
       ]),
     }),
 
-  // "What should we throw next?" / Gauge My Interest -> INTEREST FORMS
-  interest: (s: {
-    concept_name: string;
-    name?: string | null;
-    email: string;
-    phone?: string | null;
-  }) =>
-    syncRecord('interest', {
-      Name: s.name || s.concept_name,
-      'Attendee Name': s.name ?? '',
-      'Attendee Email': s.email,
-      'Suggested Event/Activity': s.concept_name,
-      'Reason for Suggestion': note([['Phone', s.phone]]),
-    }),
-
   // Optional metadata mirrors (Supabase remains source of truth).
   event: (e: {
     title: string;
@@ -141,3 +126,54 @@ export const airtable = {
       Attachment: r.image_url ? [{ url: r.image_url }] : undefined,
     }),
 };
+
+/**
+ * Submit a "What should we throw next?" idea to the Airtable INTEREST FORMS
+ * table. Unlike the optional mirrors above, Airtable is this form's PRIMARY
+ * (and only) store — submissions are NEVER written to Supabase. This throws on
+ * failure so the API route can return an error the UI can show.
+ *
+ * Maps onto the real INTEREST FORMS columns: Name / Attendee Name / Attendee
+ * Email / Suggested Event/Activity / Reason for Suggestion (+ Source). The
+ * idea title becomes the suggested activity; everything else is folded into a
+ * single readable note. `typecast` lets Airtable coerce the Source option.
+ *
+ * SECURITY: server-only module — AIRTABLE_API_KEY never reaches the browser.
+ */
+export async function submitInterest(s: {
+  name: string;
+  email: string;
+  phone?: string | null;
+  instagram?: string | null;
+  idea_title: string;
+  idea_description: string;
+  preferred_vibe?: string | null;
+  consent?: boolean;
+}): Promise<void> {
+  const base = await getAirtableBase();
+  const name = tableName('interest');
+  if (!base || !name) {
+    throw new Error('Airtable INTEREST FORMS table is not configured.');
+  }
+  await base(name).create(
+    [
+      {
+        fields: {
+          Name: s.name,
+          'Attendee Name': s.name,
+          'Attendee Email': s.email,
+          'Suggested Event/Activity': s.idea_title,
+          'Reason for Suggestion': note([
+            ['Idea', s.idea_description],
+            ['Preferred vibe/day', s.preferred_vibe],
+            ['Phone', s.phone],
+            ['Instagram', s.instagram],
+            ['Consent to be contacted', s.consent ? 'Yes' : 'No'],
+          ]),
+          Source: 'Website',
+        } as Airtable.FieldSet,
+      },
+    ],
+    { typecast: true },
+  );
+}

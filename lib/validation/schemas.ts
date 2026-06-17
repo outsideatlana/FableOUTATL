@@ -48,11 +48,23 @@ export const applicationSchema = z.object({
 });
 export type ApplicationInput = z.infer<typeof applicationSchema>;
 
+/**
+ * "What should we throw next?" idea form → Airtable INTEREST FORMS only
+ * (never Supabase). Required: name, email, idea title, idea description.
+ */
 export const interestSchema = z.object({
-  concept_name: z.string().trim().min(1, 'Concept is required.').max(120),
-  name: optionalText(120),
+  name,
   email,
   phone,
+  instagram: optionalText(60),
+  idea_title: z.string().trim().min(1, 'Tell us your event idea.').max(160),
+  idea_description: z
+    .string()
+    .trim()
+    .min(1, 'Describe the vibe — what should we throw?')
+    .max(2000),
+  preferred_vibe: optionalText(120),
+  consent: z.boolean().optional().default(false),
 });
 export type InterestInput = z.infer<typeof interestSchema>;
 
