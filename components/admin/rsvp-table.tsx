@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { AdminRsvp } from '@/lib/data/admin';
 import { Input, Select } from '@/components/ui/field';
-import { buttonClasses } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 
 interface EventOption {
   id: string;
@@ -13,12 +14,17 @@ interface EventOption {
 export function RsvpTable({
   rsvps,
   eventOptions,
+  hiddenRsvps = [],
 }: {
   rsvps: AdminRsvp[];
   eventOptions: EventOption[];
+  hiddenRsvps?: AdminRsvp[];
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [eventId, setEventId] = useState('');
+  const [showHidden, setShowHidden] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,6 +38,22 @@ export function RsvpTable({
       );
     });
   }, [rsvps, query, eventId]);
+
+  // Hide (soft-delete) / restore — never deletes the Supabase row or the
+  // Airtable RSVPS record; only toggles the dashboard hidden list.
+  async function setHidden(id: string, hidden: boolean) {
+    setPendingId(id);
+    try {
+      await fetch('/api/admin/hidden-records', {
+        method: hidden ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_table: 'rsvps', source_record_id: id }),
+      });
+      router.refresh();
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   const exportHref = eventId
     ? `/api/admin/rsvps/export?event=${eventId}`
@@ -69,12 +91,13 @@ export function RsvpTable({
               <th className="p-3">Phone</th>
               <th className="p-3">Event</th>
               <th className="p-3">Date</th>
+              <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-muted">No RSVPs match.</td>
+                <td colSpan={6} className="p-6 text-center text-muted">No RSVPs match.</td>
               </tr>
             ) : (
               filtered.map((r) => (
@@ -86,12 +109,62 @@ export function RsvpTable({
                   <td className="p-3 font-mono text-[0.65rem] text-muted">
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>
+                  <td className="p-3 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={pendingId === r.id}
+                      onClick={() => setHidden(r.id, true)}
+                      className="hover:text-hot-400"
+                      title="Remove from dashboard (keeps Airtable record)"
+                    >
+                      Remove
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {hiddenRsvps.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowHidden((s) => !s)}
+            className="mono-label hover:text-white"
+          >
+            [ {showHidden ? 'Hide' : 'Show'} removed RSVPs ({hiddenRsvps.length}) ]
+          </button>
+          {showHidden && (
+            <div className="mt-3 space-y-2">
+              {hiddenRsvps.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center justify-between gap-3 border border-line bg-ink-800 p-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <span className="font-medium">{r.name}</span>{' '}
+                    <span className="text-muted">
+                      {r.email}
+                      {r.event_title ? ` · ${r.event_title}` : ''}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingId === r.id}
+                    onClick={() => setHidden(r.id, false)}
+                  >
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -10,11 +10,20 @@ import {
   APPLICATION_TYPES,
 } from '@/types/applications';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/field';
 
-export function ApplicationsTable({ applications }: { applications: ApplicationRow[] }) {
+export function ApplicationsTable({
+  applications,
+  hiddenApplications = [],
+}: {
+  applications: ApplicationRow[];
+  hiddenApplications?: ApplicationRow[];
+}) {
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState<'' | ApplicationType>('');
+  const [showHidden, setShowHidden] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () => applications.filter((a) => !typeFilter || a.type === typeFilter),
@@ -28,6 +37,22 @@ export function ApplicationsTable({ applications }: { applications: ApplicationR
       body: JSON.stringify({ status }),
     });
     router.refresh();
+  }
+
+  // Hide (soft-delete) / restore — never deletes the Supabase row or the
+  // Airtable APPLICATIONS record; only toggles the dashboard hidden list.
+  async function setHidden(id: string, hidden: boolean) {
+    setPendingId(id);
+    try {
+      await fetch('/api/admin/hidden-records', {
+        method: hidden ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_table: 'applications', source_record_id: id }),
+      });
+      router.refresh();
+    } finally {
+      setPendingId(null);
+    }
   }
 
   return (
@@ -63,16 +88,28 @@ export function ApplicationsTable({ applications }: { applications: ApplicationR
                     {a.instagram ? ` · ${a.instagram}` : ''}
                   </p>
                 </div>
-                <Select
-                  value={a.status}
-                  onChange={(e) => setStatus(a.id, e.target.value as ApplicationStatus)}
-                  className="w-44"
-                  aria-label="Application status"
-                >
-                  {APPLICATION_STATUSES.map((s) => (
-                    <option key={s} value={s}>{APPLICATION_STATUS_META[s].label}</option>
-                  ))}
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={a.status}
+                    onChange={(e) => setStatus(a.id, e.target.value as ApplicationStatus)}
+                    className="w-44"
+                    aria-label="Application status"
+                  >
+                    {APPLICATION_STATUSES.map((s) => (
+                      <option key={s} value={s}>{APPLICATION_STATUS_META[s].label}</option>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={pendingId === a.id}
+                    onClick={() => setHidden(a.id, true)}
+                    className="hover:text-hot-400"
+                    title="Remove from dashboard (keeps Airtable record)"
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
               {a.portfolio_url && (
                 <a href={a.portfolio_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block break-all font-mono text-xs text-electric-400 hover:text-white">
@@ -88,6 +125,42 @@ export function ApplicationsTable({ applications }: { applications: ApplicationR
           );
         })}
       </div>
+
+      {hiddenApplications.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowHidden((s) => !s)}
+            className="mono-label hover:text-white"
+          >
+            [ {showHidden ? 'Hide' : 'Show'} removed applications ({hiddenApplications.length}) ]
+          </button>
+          {showHidden && (
+            <div className="mt-3 space-y-2">
+              {hiddenApplications.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-wrap items-center justify-between gap-3 border border-line bg-ink-800 p-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <Badge className="border-line text-electric-400">{APPLICATION_TYPE_META[a.type].label}</Badge>{' '}
+                    <span className="font-medium">{a.name}</span>{' '}
+                    <span className="text-muted">{a.email}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingId === a.id}
+                    onClick={() => setHidden(a.id, false)}
+                  >
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
