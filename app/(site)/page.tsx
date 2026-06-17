@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { getPublishedEvents, getPublicRecaps } from '@/lib/data/public';
-import { EventCard } from '@/components/public/event-card';
-import { RecapGallery } from '@/components/public/recap-gallery';
 import { RsvpForm } from '@/components/forms/rsvp-form';
 import { NewsletterForm } from '@/components/forms/newsletter-form';
-import { GaugeMyInterest } from '@/components/home/GaugeMyInterest';
-import { WhoWeveHosted } from '@/components/home/WhoWeveHosted';
+import { EventsSection } from '@/components/home/events-section';
+import { RecapsSection } from '@/components/home/recaps-section';
+import { GaugeInterestForm } from '@/components/home/gauge-interest-form';
+import { WhoWeveHosted } from '@/components/home/who-weve-hosted';
 import { shortDate } from '@/lib/utils';
 import type { EventRow } from '@/types/database';
 
@@ -20,12 +20,14 @@ export default async function HomePage() {
     <>
       <Hero />
       <Ticker events={upcoming} />
-      <UpcomingEvents events={upcoming} />
-      {/* PRESERVED AI-built sections */}
-      <GaugeMyInterest />
+      <EventsSection events={upcoming} />
+      {/*
+        Canonical "Gauge My Interest" FORM section. Do NOT swap this back to the
+        old concept-card grid — see components/home/gauge-interest-form.tsx.
+      */}
+      <GaugeInterestForm />
       <WhoWeveHosted />
-      {/* Lovable-styled remainder */}
-      <PastRecaps recaps={recaps} />
+      <RecapsSection recaps={recaps} />
       <ApplicationHub />
       <RsvpSection eventOptions={eventOptions} />
       <AboutSection />
@@ -92,50 +94,6 @@ function Ticker({ events }: { events: EventRow[] }) {
         ))}
       </div>
     </div>
-  );
-}
-
-function UpcomingEvents({ events }: { events: EventRow[] }) {
-  return (
-    <section id="events" className="relative gradient-divider px-6 py-24">
-      <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="mb-3 font-mono text-xs uppercase tracking-widest text-red-600">[ 01 / Calendar ]</p>
-          <h2 className="font-display text-5xl uppercase tracking-tighter md:text-7xl">
-            Upcoming
-            <br />
-            Drops
-          </h2>
-        </div>
-        <a href="#rsvp" className="font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-accent">
-          [ Pre-RSVP → ]
-        </a>
-      </div>
-
-      {events.length === 0 ? (
-        <div className="border border-dashed border-border p-16 text-center">
-          <p className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">[ No shows announced yet ]</p>
-          <p className="mb-6 font-display text-3xl uppercase">Next drop loading.</p>
-          <p className="mx-auto max-w-md text-muted-foreground">Join the list below to be the first to know when tickets go live.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-px border border-border bg-border md:grid-cols-2 lg:grid-cols-3">
-          {events.map((e) => (
-            <EventCard key={e.id} event={e} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function PastRecaps({ recaps }: { recaps: Awaited<ReturnType<typeof getPublicRecaps>> }) {
-  return (
-    <section id="recaps" className="relative gradient-divider px-6 py-24">
-      <p className="mb-3 font-mono text-xs uppercase tracking-widest text-red-600">[ 03 / Archive ]</p>
-      <h2 className="mb-12 font-display text-5xl uppercase tracking-tighter md:text-7xl">Past Recaps</h2>
-      <RecapGallery recaps={recaps} />
-    </section>
   );
 }
 
