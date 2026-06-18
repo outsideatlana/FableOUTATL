@@ -115,7 +115,7 @@ function ApplicationHub() {
         </h2>
         <p className="mb-16 max-w-2xl text-lg opacity-70">
           OutsideAtl is community-driven. Whether you&apos;re behind the decks, behind the lens, or
-          behind a brand — we want to hear from you.
+          behind a brand. We want to hear from you.
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {tracks.map((t) => (
@@ -131,14 +131,14 @@ function ApplicationHub() {
             </Link>
           ))}
           <Link
-            href="/apply/vendor"
+            href="/apply/sponsors"
             className="block border border-accent/60 bg-accent/10 p-8 transition-colors hover:bg-accent hover:text-accent-foreground md:col-span-2"
           >
             <span className="mb-8 block font-mono text-xs uppercase">[ 05 / Sponsors &amp; Partners ]</span>
             <h4 className="mb-4 font-display text-4xl uppercase">Partner With OutsideAtl</h4>
             <p className="mb-8 text-sm opacity-80">
               Sponsorship packages, brand activations, in-kind partners, media collabs. Pitch a
-              custom ask — we tailor every deal.
+              custom ask.
             </p>
             <span className="text-xs font-bold uppercase tracking-widest">Partner With Us →</span>
           </Link>
@@ -182,9 +182,9 @@ function AboutSection() {
           parties, festivals, concerts, pop-ups, raves, DJ nights, and artist-focused events.
         </p>
         <p className="text-lg leading-relaxed text-muted-foreground">
-          We&apos;re rooted in Atlanta&apos;s live music, nightlife, college, and youth culture
-          scene — and we partner with venues, sponsors, brands, vendors, and artists to build the
-          city&apos;s next chapter after dark.
+          We&apos;re made in Atlanta&apos;s live music, nightlife, college, and youth culture
+          scene and we partner with venues, sponsors, brands, vendors, and artists to build the
+          city&apos;s best nightlive experience.
         </p>
       </div>
     </section>
@@ -198,7 +198,7 @@ function NewsletterSection() {
         <p className="mb-3 font-mono text-xs uppercase tracking-widest text-red-600">[ Newsletter ]</p>
         <h2 className="mb-6 font-display text-5xl uppercase tracking-tight">Don&apos;t Miss the Next Wave</h2>
         <p className="mb-10 text-muted-foreground">
-          Inner-circle drops, secret locations, and community invites — straight to your inbox.
+          First drops, secret locations, and community invites straight to your inbox.
         </p>
         <NewsletterForm />
       </div>

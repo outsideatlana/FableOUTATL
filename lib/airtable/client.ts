@@ -191,9 +191,9 @@ export function submitApplication(a: ApplicationFields & { role?: string | null 
   });
 }
 
-/** Role-specific application → Interns / Vendors / Dj / Sponsors / Freelance. */
+/** Role-specific application → Interns / Vendors / Dj / Freelance. */
 export function submitRoleApplication(
-  key: Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'>,
+  key: Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'freelance'>,
   a: ApplicationFields,
 ): Promise<void> {
   return submitForm(key, {
@@ -204,6 +204,41 @@ export function submitRoleApplication(
     portfolio: a.portfolio_url,
     experience: a.experience,
     message: a.message,
+  });
+}
+
+export interface SponsorApplicationFields {
+  name: string;
+  email: string;
+  phone?: string | null;
+  instagram?: string | null;
+  company?: string | null;
+  website_url?: string | null;
+  sponsorship_type?: string | null;
+  budget_range?: string | null;
+  what_to_sponsor?: string | null;
+  message?: string | null;
+}
+
+/**
+ * Sponsor application / inquiry → Sponsors (Airtable-only — never Vendors and
+ * never a Supabase mirror). Sponsors collect brand-specific fields, so this has
+ * its own shape rather than reusing submitRoleApplication. `Created At` is
+ * stamped here; `Source` is written as a constant from the field map.
+ */
+export function submitSponsorApplication(a: SponsorApplicationFields): Promise<void> {
+  return submitForm('sponsors', {
+    name: a.name,
+    email: a.email,
+    phone: a.phone,
+    instagram: a.instagram,
+    company: a.company,
+    website: a.website_url,
+    sponsorshipType: a.sponsorship_type,
+    budgetRange: a.budget_range,
+    whatToSponsor: a.what_to_sponsor,
+    message: a.message,
+    createdAt: new Date().toISOString(),
   });
 }
 

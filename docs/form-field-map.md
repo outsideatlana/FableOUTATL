@@ -155,20 +155,40 @@ Also persisted to Supabase `applications` (type `dj`).
 
 ## Sponsor Application / Inquiry
 
-Frontend component: _none yet_ (route ready for a future sponsor form)
-API route: `app/api/applications/sponsors/route.ts`
-Airtable table: `SPONSORS` → real name `Sponsors` (`tbl76EBA5bnLJGswo`)
+Frontend component: `components/forms/sponsor-form.tsx` (page: `app/(site)/apply/sponsors/page.tsx`, route `/apply/sponsors`)
+API route: `app/api/applications/sponsors/route.ts` — **dedicated** handler (does
+**not** reuse the shared role-application route and **never** writes to the
+Vendors table or a Supabase mirror). Uses `submitSponsorApplication`.
+Airtable table: `Sponsors` (`tbl76EBA5bnLJGswo`). Real name is case-sensitive
+`Sponsors` (not `SPONSORS`); `AIRTABLE_SPONSORS_TABLE` may override it, else the
+code falls back to the table ID.
 Airtable-only (no `sponsor` Supabase application type).
 
 | User-facing Label | Input Name | State Key | API Payload Key | Airtable Field | Airtable Type | Required | Transform | Tested |
 |---|---|---|---|---|---|---|---|---|
-| Full Name | name | name | name | Name | Single line text | Yes | Trim | Yes |
+| Contact Name | name | name | name | Name | Single line text | Yes | Trim | Yes |
 | Email | email | email | email | Email | Single line text | Yes | Trim | Yes |
 | Phone | phone | phone | phone | Phone | Phone | No | Trim | Yes |
 | Instagram | instagram | instagram | instagram | Social Media Handle | Single line text | No | Trim | Yes |
-| Portfolio / Media link | portfolio_url | portfolio_url | portfolio_url | Portfolio/Media link | URL | No | Trim | Yes |
-| Experience / Message | experience | experience | experience | Experience/ Messages | Long text | No | Trim | Yes |
+| Company / Brand Name | company | company | company | Company / Brand Name **(created)** | Single line text | No | Trim | Yes |
+| Website URL | website_url | website_url | website_url | Portfolio/Media link | URL | No | Trim | Yes |
+| Sponsorship Type | sponsorship_type | sponsorship_type | sponsorship_type | Sponsorship Type **(created)** | Single select | No | Trim (option matches choice) | Yes |
+| Budget Range | budget_range | budget_range | budget_range | Budget Range **(created)** | Single select | No | Trim (option matches choice) | Yes |
+| What do you want to sponsor? | what_to_sponsor | what_to_sponsor | what_to_sponsor | What They Want To Sponsor **(created)** | Long text | No | Trim | Yes |
 | Message | message | message | message | Notes | Long text | No | Trim | Yes |
+| — (system) | — | — | — (server) | Created At **(created)** | Date/time | n/a | `new Date().toISOString()` (server-stamped) | Yes |
+| — (system) | — | — | — | Source = "Website" **(created)** | Single select | n/a | Constant | Yes |
+
+Notes:
+- **Website URL** is stored in the existing URL column `Portfolio/Media link`
+  (no separate "Website" column was created).
+- `Sponsorship Type` choices: Cash Sponsorship · In-Kind / Product · Media /
+  Promotional · Brand Activation · Other.
+- `Budget Range` choices: Under $1,000 · $1,000 - $5,000 · $5,000 - $10,000 ·
+  $10,000+ · Flexible / Not sure. The form `<select>` option values match these
+  Airtable choices exactly.
+- `Created At` is a writable date/time column stamped server-side (ISO/UTC).
+- `Created At` and `Source` are system-generated, not user inputs.
 
 ---
 
@@ -206,6 +226,12 @@ Also persisted to Supabase `applications` (type `freelancer`).
 | Vendors | Experience | Long text |
 | Freelance | Instagram | Single line text |
 | Freelance | Experience | Long text |
+| Sponsors | Company / Brand Name | Single line text |
+| Sponsors | Sponsorship Type | Single select |
+| Sponsors | Budget Range | Single select |
+| Sponsors | What They Want To Sponsor | Long text |
+| Sponsors | Source | Single select |
+| Sponsors | Created At | Date/time |
 
 All other inputs mapped to columns that already existed. No input is dropped.
 
@@ -233,8 +259,18 @@ AIRTABLE_INTEREST_TABLE=Interest Forms
 AIRTABLE_INTERNS_TABLE=Interns
 AIRTABLE_VENDORS_TABLE=Vendors
 AIRTABLE_DJ_TABLE=Dj
-AIRTABLE_SPONSORS_TABLE=Sponsors
+AIRTABLE_SPONSORS_TABLE=Sponsors    # case-sensitive: "Sponsors", NOT "SPONSORS"
 AIRTABLE_FREELANCE_TABLE=Freelance
+```
+
+Site media (public — served from the Supabase `media` bucket, never Vercel Blob):
+
+```env
+# Code falls back to these exact URLs if unset (lib/media.ts), so the brand
+# always renders. Favicon uses the main logo; header/footer use the transparent.
+NEXT_PUBLIC_OUTSIDEATL_LOGO_URL=https://dpenkeevywzfqapqubso.supabase.co/storage/v1/object/public/media/outsideatllogo.jpg
+NEXT_PUBLIC_OUTSIDEATL_TRANSPARENT_LOGO_URL=https://dpenkeevywzfqapqubso.supabase.co/storage/v1/object/public/media/transparentoalogo.png
+SUPABASE_STORAGE_BUCKET=media       # the logo URLs live in this bucket
 ```
 
 > ⚠️ The case-sensitive Airtable table names are `RSVPs`, `Signups`,

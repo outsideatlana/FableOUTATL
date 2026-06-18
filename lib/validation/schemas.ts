@@ -57,6 +57,31 @@ export const roleApplicationSchema = applicationSchema.omit({ type: true });
 export type RoleApplicationInput = z.infer<typeof roleApplicationSchema>;
 
 /**
+ * Sponsor application / inquiry → Airtable SPONSORS only (never Vendors, never
+ * Supabase). Sponsors collect brand-specific fields, so this is its own schema.
+ * Required: name + email. `created_at` and `source` are stamped server-side.
+ */
+export const sponsorApplicationSchema = z.object({
+  name,
+  email,
+  phone,
+  instagram: optionalText(60),
+  company: optionalText(160),
+  website_url: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+    .refine(
+      (v) => v == null || /^https?:\/\/.+/.test(v),
+      'Website must be a valid http(s) URL.',
+    ),
+  sponsorship_type: optionalText(120),
+  budget_range: optionalText(120),
+  what_to_sponsor: optionalText(2000),
+  message: optionalText(2000),
+});
+export type SponsorApplicationInput = z.infer<typeof sponsorApplicationSchema>;
+
+/**
  * "What should we throw next?" idea form → Airtable INTEREST FORMS only
  * (never Supabase). Required: name, email, idea title, idea description.
  */

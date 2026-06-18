@@ -144,6 +144,9 @@ export const AIRTABLE_FORM_MAPS = {
   },
 
   // Sponsor application / inquiry  →  Sponsors
+  // Sponsor-specific shape (NOT the generic application fields). "Created At"
+  // is stamped server-side (ISO/UTC); "Source" is the constant "Website".
+  // "Website" is stored in the existing URL column "Portfolio/Media link".
   sponsors: {
     table: 'Sponsors',
     tableId: 'tbl76EBA5bnLJGswo',
@@ -153,10 +156,15 @@ export const AIRTABLE_FORM_MAPS = {
       email: 'Email',
       phone: 'Phone',
       instagram: 'Social Media Handle',
-      portfolio: 'Portfolio/Media link',
-      experience: 'Experience/ Messages',
+      company: 'Company / Brand Name',
+      website: 'Portfolio/Media link',
+      sponsorshipType: 'Sponsorship Type',
+      budgetRange: 'Budget Range',
+      whatToSponsor: 'What They Want To Sponsor',
       message: 'Notes',
+      createdAt: 'Created At',
     },
+    constants: { Source: 'Website' },
   },
 
   // Freelancer application  →  Freelance

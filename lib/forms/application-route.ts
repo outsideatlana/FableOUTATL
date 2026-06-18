@@ -6,14 +6,18 @@ import { submitRoleApplication, isAirtableConfigured } from '@/lib/airtable/clie
 import type { FormKey } from '@/lib/airtable/form-field-maps';
 import type { ApplicationType } from '@/types/database';
 
-type RoleKey = Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'freelance'>;
+type RoleKey = Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'freelance'>;
 
 /**
  * Builds a POST handler for a role-specific application form. The form's
  * PRIMARY destination is its dedicated Airtable table (Interns / Vendors / Dj
- * / Sponsors / Freelance). When a matching Supabase application_type exists we
- * also mirror to the Supabase `applications` table (best-effort) so the record
- * keeps showing in the existing admin dashboard.
+ * / Freelance). When a matching Supabase application_type exists we also mirror
+ * to the Supabase `applications` table (best-effort) so the record keeps
+ * showing in the existing admin dashboard.
+ *
+ * Sponsors are intentionally NOT handled here — they collect brand-specific
+ * fields and have a dedicated route (app/api/applications/sponsors/route.ts)
+ * using submitSponsorApplication.
  *
  * Shared Airtable logic comes from lib/airtable/client.ts — never inlined here
  * and never imported into a client component (AIRTABLE_API_KEY stays server-side).
@@ -21,7 +25,7 @@ type RoleKey = Extract<FormKey, 'interns' | 'vendors' | 'dj' | 'sponsors' | 'fre
 export function makeRoleApplicationRoute(opts: {
   tableKey: RoleKey;
   label: string;
-  /** Omit for Sponsors — there is no 'sponsor' application_type enum value. */
+  /** Optional: omit when the role has no matching Supabase application_type. */
   supabaseType?: ApplicationType;
 }) {
   return async function POST(request: Request) {
