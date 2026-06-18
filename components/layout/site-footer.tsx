@@ -4,7 +4,10 @@ import { OUTSIDEATL_LOGO_URL } from '@/lib/media';
 
 /**
  * Footer — ported from the Lovable design. One clean row:
- * left = info + admin · middle = OutsideAtl logo · right = socials + apply.
+ * left = info · middle = OutsideAtl logo · right = socials + apply.
+ *
+ * The admin dashboard is intentionally NOT linked here — it stays reachable
+ * by direct URL (/admin) for the owner, but is not advertised publicly.
  */
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -21,12 +24,6 @@ export function SiteFooter() {
             <p>contact@outsideatl.co</p>
             <p>ALL RIGHTS RESERVED</p>
           </div>
-          <Link
-            href="/admin"
-            className="mt-4 inline-block border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-accent hover:text-accent"
-          >
-            Admin
-          </Link>
         </div>
 
         {/* Middle: non-transparent OutsideAtl logo (visible on the dark
