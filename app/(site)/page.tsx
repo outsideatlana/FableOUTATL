@@ -32,6 +32,7 @@ export default async function HomePage() {
       <RsvpSection eventOptions={eventOptions} />
       <AboutSection />
       <NewsletterSection />
+      <ContactSection />
     </>
   );
 }
@@ -202,6 +203,29 @@ function NewsletterSection() {
         </p>
         <NewsletterForm />
       </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  return (
+    <section
+      id="contact"
+      className="flex flex-col items-center border-t border-border px-6 py-24 text-center"
+    >
+      <p className="mb-3 font-mono text-xs uppercase tracking-widest text-red-600">[ Contact ]</p>
+      <h2 className="mb-6 font-display text-5xl uppercase tracking-tight md:text-7xl">
+        Get In Touch
+      </h2>
+      <p className="mb-10 max-w-xl text-muted-foreground">
+        For bookings, partnerships, sponsorships, and general inquiries.
+      </p>
+      <a
+        href="mailto:contact@outsideatl.co"
+        className="font-display text-2xl uppercase tracking-tight underline underline-offset-8 transition-colors hover:text-accent md:text-4xl"
+      >
+        contact@outsideatl.co
+      </a>
     </section>
   );
 }

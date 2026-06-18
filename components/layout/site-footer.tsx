@@ -1,14 +1,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { OUTSIDEATL_TRANSPARENT_LOGO_URL } from '@/lib/media';
+import { OUTSIDEATL_LOGO_URL } from '@/lib/media';
 
-/** Footer — ported from the Lovable design. */
+/**
+ * Footer — ported from the Lovable design. One clean row:
+ * left = info + admin · middle = OutsideAtl logo · right = socials + apply.
+ */
 export function SiteFooter() {
   const year = new Date().getFullYear();
   return (
-    <footer id="contact" className="border-t border-border">
-      <div className="flex flex-col items-start justify-between gap-12 px-6 py-16 md:flex-row">
-        <div className="space-y-4">
+    <footer className="border-t border-border">
+      <div className="flex flex-col items-center gap-12 px-6 py-16 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-4 text-center md:text-left">
           <Link href="/" className="block font-display text-4xl uppercase tracking-tight">
             Outside<span className="text-red-600">Atl</span>
           </Link>
@@ -26,7 +29,20 @@ export function SiteFooter() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-16">
+        {/* Middle: non-transparent OutsideAtl logo (visible on the dark
+            background), object-contain so the square mark is never distorted. */}
+        <div className="flex justify-center">
+          <Image
+            src={OUTSIDEATL_LOGO_URL}
+            alt="OutsideAtl"
+            width={548}
+            height={548}
+            sizes="128px"
+            className="h-28 w-28 object-contain md:h-32 md:w-32"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-16 text-center md:text-left">
           <div className="space-y-4">
             <h2 className="font-mono text-[10px] font-bold uppercase text-red-600">Socials</h2>
             <ul className="space-y-1 font-display text-lg uppercase">
@@ -45,19 +61,6 @@ export function SiteFooter() {
             </ul>
           </div>
         </div>
-      </div>
-
-      {/* Centered transparent OutsideAtl logo, sized exactly 200×150 with
-          object-contain so the square mark fits without stretch/crop. */}
-      <div className="flex justify-center border-t border-border px-6 py-10">
-        <Image
-          src={OUTSIDEATL_TRANSPARENT_LOGO_URL}
-          alt="OutsideAtl"
-          width={200}
-          height={150}
-          sizes="200px"
-          className="object-contain"
-        />
       </div>
     </footer>
   );
