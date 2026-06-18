@@ -21,7 +21,13 @@ export function SiteFooter() {
             <p>contact@outsideatl.co</p>
             <p>ALL RIGHTS RESERVED</p>
           </div>
-          
+          <Link
+            href="/admin"
+            className="mt-4 inline-block border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+          >
+            Admin
+          </Link>
+        </div>
 
         {/* Middle: non-transparent OutsideAtl logo (visible on the dark
             background), object-contain so the square mark is never distorted. */}
