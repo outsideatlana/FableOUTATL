@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
 import { getPublishedEvents } from '@/lib/data/public';
-import { eventSchema, fieldErrors } from '@/lib/validation/schemas';
+import { eventSchema, fieldErrors, toEventColumns } from '@/lib/validation/schemas';
 import { airtable } from '@/lib/airtable/sync';
 import { slugify } from '@/lib/utils';
 
@@ -44,16 +44,7 @@ export async function POST(request: Request) {
 
     const { data: event, error } = await supabase
       .from('events')
-      .insert({
-        title: data.title,
-        slug,
-        description: data.description,
-        event_date: data.event_date,
-        location: data.location,
-        status: data.status,
-        hero_image_url: data.hero_image_url,
-        hero_image_pathname: data.hero_image_pathname,
-      })
+      .insert({ ...toEventColumns(data), slug })
       .select('*')
       .single();
     if (error) {

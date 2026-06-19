@@ -23,6 +23,25 @@ export interface EventRow {
   hero_image_url: string | null;
   hero_image_pathname: string | null;
   status: EventStatus;
+  // ---- Event detail fields (migration 0006) ----
+  subtitle: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  city_state: string | null;
+  rsvp_url: string | null;
+  use_internal_rsvp: boolean;
+  ticket_url: string | null;
+  age_restriction: string | null;
+  price_label: string | null;
+  lineup: string[];
+  category: string | null;
+  is_featured: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
+  cta_text: string | null;
+  cta_url: string | null;
   created_at: string;
   updated_at: string;
 }

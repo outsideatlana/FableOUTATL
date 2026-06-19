@@ -17,8 +17,8 @@ export default async function EventsPage() {
     <Section eyebrow="[ Calendar ]" title="Upcoming Events">
       {events.length === 0 ? (
         <div className="border border-line bg-ink-800 p-12 text-center">
-          <p className="mono-label">[ Standby ]</p>
-          <p className="mt-3 font-display text-2xl uppercase">No events on the calendar yet.</p>
+          <p className="mono-label">[ Calendar ]</p>
+          <p className="mt-3 font-display text-2xl uppercase">No upcoming events posted yet.</p>
           <p className="mt-1 text-sm text-muted">Check back soon — or join the list on the homepage.</p>
         </div>
       ) : (

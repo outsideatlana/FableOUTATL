@@ -23,6 +23,29 @@ export async function getPublishedEvents(): Promise<EventRow[]> {
   return data ?? [];
 }
 
+/**
+ * The single featured, publicly-visible event for the landing hero. Returns
+ * null when nothing is featured (the hero then shows neutral branding — never
+ * an invented event).
+ */
+export async function getFeaturedEvent(): Promise<EventRow | null> {
+  const supabase = getSupabaseServer();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_featured', true)
+    .in('status', ['published', 'sold_out'])
+    .order('event_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error('[data] getFeaturedEvent:', error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
 export async function getEventBySlug(slug: string): Promise<EventRow | null> {
   const supabase = getSupabaseServer();
   if (!supabase) return null;

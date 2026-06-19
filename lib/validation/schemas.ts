@@ -108,19 +108,115 @@ export const signupSchema = z.object({
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/** Optional http(s) URL — empty/null becomes null, otherwise must be a URL. */
+const optionalUrl = (label = 'Enter a valid http(s) URL.') =>
+  z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v.trim() === '' ? null : v.trim()))
+    .refine((v) => v == null || /^https?:\/\/.+/i.test(v), label);
+
 export const eventSchema = z.object({
   title: z.string().trim().min(1, 'Title is required.').max(160),
+  subtitle: optionalText(200),
   slug: optionalText(180),
   description: optionalText(4000),
   event_date: z
     .union([z.string(), z.null(), z.undefined()])
     .transform((v) => (v == null || v.trim() === '' ? null : v.trim())),
+  start_time: optionalText(60),
+  end_time: optionalText(60),
   location: optionalText(200),
+  venue_name: optionalText(200),
+  venue_address: optionalText(300),
+  city_state: optionalText(120),
+  category: optionalText(80),
+  age_restriction: optionalText(60),
+  price_label: optionalText(120),
+  // Accepts a string[] (form pre-splits) or a newline/comma string (API
+  // resilience). Empties dropped; null/undefined -> []. Never throws on shape.
+  lineup: z
+    .union([z.array(z.string()), z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const parts = Array.isArray(v)
+        ? v
+        : typeof v === 'string'
+          ? v.split(/[\n,]/)
+          : [];
+      return parts.map((s) => s.trim()).filter(Boolean).slice(0, 60);
+    }),
+  use_internal_rsvp: z.coerce.boolean().default(true),
+  rsvp_url: optionalUrl('RSVP link must be a valid http(s) URL.'),
+  ticket_url: optionalUrl('Ticket link must be a valid http(s) URL.'),
+  is_featured: z.coerce.boolean().default(false),
   status: z.enum(['draft', 'published', 'sold_out', 'archived']).default('draft'),
+  seo_title: optionalText(200),
+  seo_description: optionalText(320),
+  cta_text: optionalText(80),
+  cta_url: optionalUrl('Call-to-action link must be a valid http(s) URL.'),
   hero_image_url: optionalText(1000),
   hero_image_pathname: optionalText(1000),
 });
 export type EventInput = z.infer<typeof eventSchema>;
+
+/**
+ * Map validated input -> `events` table columns (everything except `slug`,
+ * which the routes derive/guard themselves). Keeps POST and PATCH in sync so a
+ * new field only has to be added in one place.
+ */
+export function toEventColumns(data: EventInput) {
+  return {
+    title: data.title,
+    subtitle: data.subtitle,
+    description: data.description,
+    event_date: data.event_date,
+    start_time: data.start_time,
+    end_time: data.end_time,
+    location: data.location,
+    venue_name: data.venue_name,
+    venue_address: data.venue_address,
+    city_state: data.city_state,
+    category: data.category,
+    age_restriction: data.age_restriction,
+    price_label: data.price_label,
+    lineup: data.lineup,
+    use_internal_rsvp: data.use_internal_rsvp,
+    rsvp_url: data.rsvp_url,
+    ticket_url: data.ticket_url,
+    is_featured: data.is_featured,
+    status: data.status,
+    seo_title: data.seo_title,
+    seo_description: data.seo_description,
+    cta_text: data.cta_text,
+    cta_url: data.cta_url,
+    hero_image_url: data.hero_image_url,
+    hero_image_pathname: data.hero_image_pathname,
+  };
+}
+
+/**
+ * Recommended public-facing fields for a *published* event. Used to warn the
+ * admin (never to block) what's missing before going live — empty values fall
+ * back to neutral copy on the page, so we never force fake data in.
+ */
+export const PUBLISH_RECOMMENDED: { key: keyof EventInput; label: string }[] = [
+  { key: 'event_date', label: 'Date' },
+  { key: 'description', label: 'Description' },
+  { key: 'venue_name', label: 'Venue' },
+  { key: 'hero_image_url', label: 'Poster image' },
+];
+
+/** Names of recommended fields that are empty — for the admin "missing" hint. */
+export function missingForPublish(input: {
+  event_date?: unknown;
+  description?: unknown;
+  venue_name?: unknown;
+  hero_image_url?: unknown;
+}): string[] {
+  return PUBLISH_RECOMMENDED.filter(({ key }) => {
+    const v = (input as Record<string, unknown>)[key];
+    return v == null || (typeof v === 'string' && v.trim() === '');
+  }).map((f) => f.label);
+}
 
 export const recapMetaSchema = z.object({
   event_id: z

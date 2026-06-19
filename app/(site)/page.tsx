@@ -1,24 +1,30 @@
 import Link from 'next/link';
-import { getPublishedEvents, getPublicRecaps } from '@/lib/data/public';
+import { getPublishedEvents, getPublicRecaps, getFeaturedEvent } from '@/lib/data/public';
 import { RsvpForm } from '@/components/forms/rsvp-form';
 import { NewsletterForm } from '@/components/forms/newsletter-form';
 import { EventsSection } from '@/components/home/events-section';
 import { RecapsSection } from '@/components/home/recaps-section';
 import { GaugeInterestForm } from '@/components/home/gauge-interest-form';
 import { WhoWeveHosted } from '@/components/home/who-weve-hosted';
-import { shortDate } from '@/lib/utils';
+import { AnimatedEventBackground } from '@/components/ui/animated-event-background';
+import { GeneratedEventPoster } from '@/components/events/generated-event-poster';
+import { shortDate, formatEventDate } from '@/lib/utils';
 import type { EventRow } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const [events, recaps] = await Promise.all([getPublishedEvents(), getPublicRecaps()]);
+  const [events, recaps, featured] = await Promise.all([
+    getPublishedEvents(),
+    getPublicRecaps(),
+    getFeaturedEvent(),
+  ]);
   const upcoming = events.slice(0, 6);
   const eventOptions = events.map((e) => ({ id: e.id, title: e.title }));
 
   return (
     <>
-      <Hero />
+      <Hero featured={featured} />
       <Ticker events={upcoming} />
       <EventsSection events={upcoming} />
       {/*
@@ -37,44 +43,85 @@ export default async function HomePage() {
   );
 }
 
-function Hero() {
+function Hero({ featured }: { featured: EventRow | null }) {
   return (
     <section className="relative flex min-h-[92vh] flex-col justify-end overflow-hidden gradient-divider px-6 pb-20">
       <div className="absolute inset-0 z-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
-      <div className="hero-glow z-0" aria-hidden="true" />
-      <div className="hero-radial z-0" aria-hidden="true" />
-      <div className="relative z-10 max-w-6xl animate-slide-up">
-        <p className="mb-6 font-mono text-xs uppercase tracking-[0.3em] text-red-600">
-          [ Atlanta / Live Music / Nightlife ]
-        </p>
-        <h1
-          className="text-balance font-display text-[clamp(3.5rem,13vw,11rem)] uppercase leading-[0.85] tracking-tighter"
-          style={{ textShadow: '0 0 80px hsl(220 90% 40% / 0.4)' }}
-        >
-          The Sound of <span className="text-red-600">Atlanta&apos;s</span>
-          <br />
-          After-Hours
-        </h1>
-        <p className="mt-8 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
-          We curate high-energy social experiences — from hidden warehouse raves to sun-drenched
-          day parties. Building the next era of Atlanta&apos;s nightlife culture.
-        </p>
-        <div className="mt-10 flex flex-wrap gap-3">
-          <a
-            href="#events"
-            className="bg-accent px-8 py-4 font-display text-xl uppercase tracking-tight text-accent-foreground shadow-[0_0_40px_hsl(220_90%_40%/0.5)] transition-transform hover:scale-105"
+      <AnimatedEventBackground />
+      <div className="relative z-10 grid w-full animate-slide-up items-end gap-12 lg:grid-cols-[1.4fr_0.9fr]">
+        <div className="max-w-2xl">
+          <p className="mb-6 font-mono text-xs uppercase tracking-[0.3em] text-red-600">
+            [ Atlanta / Live Music / Nightlife ]
+          </p>
+          <h1
+            className="text-balance font-display text-[clamp(3.5rem,11vw,9rem)] uppercase leading-[0.85] tracking-tighter"
+            style={{ textShadow: '0 0 80px hsl(220 90% 40% / 0.4)' }}
           >
-            Upcoming Shows
-          </a>
-          <Link
-            href="/dj"
-            className="border border-foreground/30 px-8 py-4 font-display text-xl uppercase tracking-tight backdrop-blur-md transition-all hover:bg-foreground hover:text-background"
-          >
-            Artist Submission
-          </Link>
+            The Sound of <span className="text-red-600">Atlanta&apos;s</span>
+            <br />
+            After-Hours
+          </h1>
+          <p className="mt-8 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
+            We curate high-energy social experiences — from hidden warehouse raves to sun-drenched
+            day parties. Building the next era of Atlanta&apos;s nightlife culture.
+          </p>
+          <div className="mt-10 flex flex-wrap gap-3">
+            <a
+              href="#events"
+              className="bg-accent px-8 py-4 font-display text-xl uppercase tracking-tight text-accent-foreground shadow-[0_0_40px_hsl(220_90%_40%/0.5)] transition-transform hover:scale-105"
+            >
+              Upcoming Shows
+            </a>
+            <Link
+              href="/dj"
+              className="border border-foreground/30 px-8 py-4 font-display text-xl uppercase tracking-tight backdrop-blur-md transition-all hover:bg-foreground hover:text-background"
+            >
+              Artist Submission
+            </Link>
+          </div>
         </div>
+
+        {featured && <FeaturedFlyer event={featured} />}
       </div>
     </section>
+  );
+}
+
+/** Real featured event surfaced as a flyer in the hero. Never shown when no
+ *  event is featured — the hero stays neutral rather than inventing one. */
+function FeaturedFlyer({ event }: { event: EventRow }) {
+  return (
+    <Link
+      href={`/events/${event.slug}`}
+      className="group mx-auto w-full max-w-xs border border-line bg-ink-800 shadow-[0_0_60px_hsl(220_90%_40%/0.3)] ring-1 ring-electric/20 transition-transform hover:scale-[1.02] lg:mx-0 lg:ml-auto"
+    >
+      <span className="block bg-electric px-3 py-1 text-center font-mono text-[0.6rem] uppercase tracking-[0.25em] text-white">
+        Featured
+      </span>
+      <div className="aspect-[4/5] w-full overflow-hidden">
+        {event.hero_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={event.hero_image_url}
+            alt={event.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <GeneratedEventPoster title={event.title} subtitle={event.subtitle} />
+        )}
+      </div>
+      <div className="p-4">
+        <p className="font-mono text-[0.6rem] uppercase tracking-[0.2em] text-electric-400">
+          {formatEventDate(event.event_date)}
+        </p>
+        <h3 className="mt-1 truncate font-display text-xl uppercase tracking-tight">
+          {event.title}
+        </h3>
+        <span className="mt-2 inline-block font-mono text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground group-hover:text-accent">
+          View event →
+        </span>
+      </div>
+    </Link>
   );
 }
 

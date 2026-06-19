@@ -167,6 +167,26 @@ export async function getAdminRecaps(): Promise<AdminRecap[]> {
   });
 }
 
+/**
+ * Fetch a single event by slug REGARDLESS of status (service role). Used for
+ * admin preview of draft/archived events on the public detail route — only
+ * ever called after the page has verified an admin session.
+ */
+export async function getAnyEventBySlug(slug: string): Promise<EventRow | null> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) {
+    console.error('[admin-data] getAnyEventBySlug:', error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
 export async function getAdminEventOptions(): Promise<Pick<EventRow, 'id' | 'title'>[]> {
   const supabase = getSupabaseAdmin();
   if (!supabase) return [];
