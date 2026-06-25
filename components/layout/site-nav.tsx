@@ -29,7 +29,7 @@ export function SiteNav() {
       </Link>
 
       <div className="hidden items-center gap-8 font-mono text-[10px] uppercase tracking-widest md:flex">
-        <Link href="/#events" className="transition-colors hover:text-accent">Events</Link>
+        <Link href="/events" className="transition-colors hover:text-accent">Events</Link>
         <Link href="/#apply" className="transition-colors hover:text-accent">Work With Us</Link>
         <Link href="/dj" className="transition-colors hover:text-accent">DJ Submit</Link>
         <Link href="/#contact" className="transition-colors hover:text-accent">Contact</Link>
