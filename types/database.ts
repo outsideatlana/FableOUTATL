@@ -23,6 +23,25 @@ export interface EventRow {
   hero_image_url: string | null;
   hero_image_pathname: string | null;
   status: EventStatus;
+  // ---- Event detail fields (migration 0006) ----
+  subtitle: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  city_state: string | null;
+  rsvp_url: string | null;
+  use_internal_rsvp: boolean;
+  ticket_url: string | null;
+  age_restriction: string | null;
+  price_label: string | null;
+  lineup: string[];
+  category: string | null;
+  is_featured: boolean;
+  seo_title: string | null;
+  seo_description: string | null;
+  cta_text: string | null;
+  cta_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +110,18 @@ export interface InterestSignupRow {
   created_at: string;
 }
 
+/** Dashboard log tables that support admin "hide" (soft delete). */
+export type HiddenSourceTable = 'rsvps' | 'applications';
+
+export interface AdminHiddenRecordRow {
+  id: string;
+  source_table: HiddenSourceTable;
+  source_record_id: string;
+  hidden_by: string | null;
+  hidden_at: string;
+  reason: string | null;
+}
+
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
   Row: Row;
   Insert: Insert;
@@ -107,6 +138,7 @@ export interface Database {
       interest_signups: Table<InterestSignupRow>;
       signups: Table<SignupRow>;
       hosted: Table<HostedRow>;
+      admin_hidden_records: Table<AdminHiddenRecordRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

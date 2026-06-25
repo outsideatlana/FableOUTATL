@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { verifyCredentials, startSession } from '@/lib/auth/admin';
+import {
+  getClientIp,
+  buildIdentifier,
+  isRateLimited,
+  recordAttempt,
+  clearFailures,
+  RATE_LIMIT_MESSAGE,
+} from '@/lib/auth/rate-limit';
 
 export const runtime = 'nodejs'; // bcrypt requires the Node runtime
 
@@ -16,8 +24,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Rate-limit key: IP + username (server-derived; never trusted from body).
+    const identifier = buildIdentifier(getClientIp(request), username);
+
+    // Throttle BEFORE checking credentials: 5 failures / 5 min → blocked.
+    if (await isRateLimited(identifier)) {
+      return NextResponse.json({ error: RATE_LIMIT_MESSAGE }, { status: 429 });
+    }
+
     const ok = await verifyCredentials(username, password);
     if (!ok) {
+      await recordAttempt(identifier, false);
       // Generic message — never reveal which field was wrong.
       return NextResponse.json(
         { error: 'Invalid username or password.' },
@@ -25,6 +42,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Success: log it, wipe the failure counter, then set the session cookie.
+    await recordAttempt(identifier, true);
+    await clearFailures(identifier);
     await startSession(username);
     return NextResponse.json({ ok: true });
   } catch (err) {

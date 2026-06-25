@@ -24,8 +24,8 @@ export function EventsSection({ events }: { events: EventRow[] }) {
 
       {events.length === 0 ? (
         <div className="border border-dashed border-border p-16 text-center">
-          <p className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">[ No shows announced yet ]</p>
-          <p className="mb-6 font-display text-3xl uppercase">Next drop loading.</p>
+          <p className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">[ Calendar ]</p>
+          <p className="mb-6 font-display text-3xl uppercase">No upcoming events posted yet.</p>
           <p className="mx-auto max-w-md text-muted-foreground">Join the list below to be the first to know when tickets go live.</p>
         </div>
       ) : (

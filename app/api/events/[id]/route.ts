@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/admin';
 import { requireSupabaseAdmin } from '@/lib/supabase/admin';
-import { eventSchema, fieldErrors } from '@/lib/validation/schemas';
+import { eventSchema, fieldErrors, toEventColumns } from '@/lib/validation/schemas';
 import { deleteImage } from '@/lib/supabase/storage';
 import { slugify } from '@/lib/utils';
 
@@ -26,17 +26,19 @@ export async function PATCH(request: Request, { params }: Params) {
     const data = parsed.data;
     const slug = data.slug ? slugify(data.slug) : undefined;
 
+    // Remember the previous hero image so we can clean it up if it changed
+    // (image replaced) or was cleared (image removed).
+    const { data: prev } = await supabase
+      .from('events')
+      .select('hero_image_pathname')
+      .eq('id', id)
+      .maybeSingle();
+
     const { data: event, error } = await supabase
       .from('events')
       .update({
-        title: data.title,
+        ...toEventColumns(data),
         ...(slug ? { slug } : {}),
-        description: data.description,
-        event_date: data.event_date,
-        location: data.location,
-        status: data.status,
-        hero_image_url: data.hero_image_url,
-        hero_image_pathname: data.hero_image_pathname,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -47,6 +49,12 @@ export async function PATCH(request: Request, { params }: Params) {
       return NextResponse.json({ error: 'Could not update the event.' }, { status: 500 });
     }
     if (!event) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
+
+    // Best-effort: drop the old storage object when the hero image changed.
+    const oldPath = prev?.hero_image_pathname ?? null;
+    if (oldPath && oldPath !== event.hero_image_pathname) {
+      await deleteImage(oldPath);
+    }
 
     return NextResponse.json({ ok: true, event });
   } catch (err) {

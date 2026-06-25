@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Anton, Inter, JetBrains_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { OUTSIDEATL_LOGO_URL } from '@/lib/media';
 import './globals.css';
 
 const display = Anton({ subsets: ['latin'], weight: '400', variable: '--font-display' });
@@ -15,7 +16,13 @@ export const metadata: Metadata = {
   },
   description:
     'OutsideAtl produces parties, festivals, concerts, raves, pop-ups, and social events across Atlanta. Live music, nightlife, culture.',
-  metadataBase: new URL('https://outsideatl.com'),
+  metadataBase: new URL('https://outsideatl.co'),
+  // Browser tab / favicon — the OutsideAtl mark, served from Supabase Storage.
+  icons: {
+    icon: OUTSIDEATL_LOGO_URL,
+    shortcut: OUTSIDEATL_LOGO_URL,
+    apple: OUTSIDEATL_LOGO_URL,
+  },
   openGraph: {
     title: "OutsideAtl — The Sound of Atlanta's After-Hours",
     description: 'Parties, festivals, concerts, raves, and pop-ups across Atlanta.',
